@@ -1,0 +1,18 @@
+name = "porton-saas-nuevo"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "porton-saas-db-nueva"
+database_id = "REEMPLAZA_CON_EL_ID_DE_LA_BASE_NUEVA"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+# ADMIN_SIGNING_SECRET: crear como secreto, nunca pegar aquí.
+# El dominio personalizado se configura DESPUÉS de comprobar workers.dev.
+# [[routes]]
+# pattern = "porton.inomali.com"
+# custom_domain = true

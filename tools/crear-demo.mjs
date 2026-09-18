@@ -1,0 +1,24 @@
+import {randomUUID,randomBytes,pbkdf2Sync} from 'node:crypto';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+const [originArg,outArg]=process.argv.slice(2);
+if(!originArg||!outArg)throw Error('Uso: node crear-demo.mjs https://tu-aplicacion directorio-salida');
+const url=new URL(originArg);if(url.protocol!=='https:'||url.username||url.password)throw Error('Indica la URL HTTPS de la aplicación');
+const origin=url.origin,out=resolve(outArg);mkdirSync(out,{recursive:true});
+const id=randomUUID(),slug='residencial-demo',name='Residencial Aurora · DEMO',stamp=Date.now();
+const q=v=>v===null?'NULL':typeof v==='number'?(v>1000000000000?'(unixepoch()*1000'+(v-stamp>=0?'+':'')+(v-stamp)+')':String(v)):"'"+String(v).replace(/'/g,"''")+"'";
+const statements=[];
+const insert=(table,fields,values)=>statements.push(`INSERT INTO ${table} (${fields.join(',')}) VALUES (${values.map(q).join(',')});`);
+const credential=()=>{const password='Demo-'+randomBytes(9).toString('base64url'),salt=randomBytes(16);return {password,hash:`pbkdf2$100000$${salt.toString('hex')}$${pbkdf2Sync(password,salt,100000,32,'sha256').toString('hex')}`};};
+insert('tenants',['id','slug','name','status','created_at'],[id,slug,name,'active',stamp]);
+const gates=['Portón principal · demo','Estacionamiento · demo','Acceso de servicio · demo'].map((name,i)=>({id:randomUUID(),name,url:origin+'/health?demo='+slug+'&gate='+(i+1)}));
+for(const g of gates)insert('gates',['id','tenant_id','name','trigger_type','trigger_config','status','created_at'],[g.id,id,g.name,'demo',JSON.stringify({url:g.url,method:'GET'}),'active',stamp]);
+const users=[{username:'demo',role:'master',gates:[0,1,2]},{username:'ana.demo',role:'user',gates:[0,1]},{username:'carlos.demo',role:'user',gates:[0,1]},{username:'servicio.demo',role:'user',gates:[2]}].map(u=>({...u,id:randomUUID(),...credential()}));
+for(const u of users){insert('users',['id','tenant_id','username','secret','role','created_at'],[u.id,id,u.username,u.hash,u.role,stamp]);if(u.role!=='master')for(const n of u.gates)insert('user_gates',['tenant_id','user_id','gate_id'],[id,u.id,gates[n].id]);}
+const samples=[['120101','Familia Martínez · depto. 101',0,1,0,0,'active'],['120102','Visita de Sofía · depto. 204',0,2,1,7,'active'],['120103','Estacionamiento · Ana',1,1,0,30,'active'],['120104','Mantenimiento de jardines',2,3,0,14,'active'],['120105','Entrega de supermercado',2,3,1,1,'active'],['120106','Visita del fin de semana',0,0,0,3,'active'],['120107','Estacionamiento · Carlos',1,2,0,0,'active'],['120108','Visita finalizada',0,0,1,0,'used'],['120109','Servicio cancelado',2,0,0,0,'revoked'],['120110','Invitación vencida',0,1,0,-1,'expired']];
+for(let i=0;i<samples.length;i++){const [code,label,g,u,single,days,status]=samples[i];insert('codes',['code','tenant_id','gate_id','label','owner','owner_id','single_use','expires_at','created_at','status'],[code,id,gates[g].id,label,users[u].username,users[u].id,single,days?stamp+days*86400000:null,stamp-(samples.length-i)*60000,status]);}
+for(let i=0;i<28;i++){const sample=samples[i%7],g=gates[sample[2]],u=users[sample[3]];insert('logs',['id','tenant_id','gate_id','gate_name','code','label','owner','owner_id','at','outcome'],[randomUUID(),id,g.id,g.name,sample[0],'DEMO · '+sample[1],u.username,u.id,stamp-i*3*3600000,'sent']);}
+writeFileSync(resolve(out,'crear-tenant-demo.sql'),'-- Datos ficticios. Ejecutar una sola vez sobre la base inicializada con database/schema.sql.\n-- Ningún webhook apunta a un dispositivo físico.\n'+statements.join('\n')+'\n',{flag:'wx'});
+writeFileSync(resolve(out,'accesos-demo.json'),JSON.stringify({tenantId:id,slug,name,publicUrl:origin+'/t/'+slug,adminUrl:origin+'/t/'+slug+'/admin',users:users.map(({username,role,password})=>({username,role,password})),visitorCodes:samples.slice(0,7).map(s=>({code:s[0],label:s[1],gate:gates[s[2]].name}))},null,2),{flag:'wx'});
+writeFileSync(resolve(out,'ACCESOS.md'),`# Vista previa para clientes\n\nTodos los datos son ficticios. Las aperturas se simulan internamente y no activan ningún dispositivo.\n\nPágina: ${origin}/t/${slug}\n\nPanel: ${origin}/t/${slug}/admin\n\nUsuario administrador: **demo**\n\nContraseña: **${users[0].password}**\n\nLa cuenta administradora permite probar códigos y usuarios solo en este edificio de demostración. Los cambios en la demo son compartidos y persisten.\n\nCódigo reutilizable de visitante: **120101** (portón principal de demostración).\n\nIncluye tres portones, cuatro usuarios con distintos permisos, diez códigos con varios estados y 28 registros de ejemplo. El historial de muestra se elimina gradualmente con la limpieza normal de 30 días.\n\nNo cambies las URLs de los portones por integraciones reales mientras compartas estos accesos.\n`,{flag:'wx'});
+console.log(JSON.stringify({slug,tenantId:id,statements:statements.length}));

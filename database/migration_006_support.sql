@@ -1,0 +1,1 @@
+ALTER TABLE tenants ADD COLUMN support_phone TEXT NOT NULL DEFAULT '';
