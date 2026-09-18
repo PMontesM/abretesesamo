@@ -12,3 +12,7 @@
 ## Corrección del inicializador de listas
 
 Se corrigieron recent_ids y recent_results: initial_value usa ahora std::vector<std::string>{} en lugar de {}. Esto elimina la ambigüedad entre constructores indicada por el compilador del usuario. Se volvió a validar y generar el código C++ con ESPHome 2026.9.0; ambas listas se generan con el tipo explícito. La compilación completa debe repetirse en el entorno del dispositivo.
+
+## Actualización de logs — 18 de septiembre de 2026
+
+Se incorporó la configuración de logs MQTT enviada por el usuario y se separó `topic_prefix: null`, que había quedado dentro de un comentario. Revisión del cambio realizada; esta actualización no se ha compilado ni cargado al dispositivo desde esta tarea.

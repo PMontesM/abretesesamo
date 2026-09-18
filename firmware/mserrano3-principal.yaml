@@ -95,7 +95,9 @@ mqtt:
   clean_session: true
   discovery: false
   discover_ip: false
-  log_topic: null
+  log_topic:
+    topic: gate/${device_name}/log
+    level: INFO   # DEBUG mientras depuras
   topic_prefix: null
   keepalive: 15s
   # Evita bloquear el bucle de control al publicar por una conexión lenta.

@@ -28,6 +28,7 @@ Todos bajo gate/mserrano3-principal/:
 
 | Topic | Dirección | Retenido | Contenido |
 |---|---|---|---|
+| log | ESP32 → Backend | No (predeterminado) | Logs de diagnóstico, nivel INFO |
 | cmd | Backend → ESP32 | NO | Orden JSON |
 | ack | ESP32 → Backend | NO | ID, boot_id, status, reason opcional |
 | state | ESP32 → Backend | Sí | initializing, online, opening, cooldown, offline |
@@ -90,3 +91,7 @@ No se ha flasheado el dispositivo ni enviado una orden MQTT real desde esta tare
 - https://esphome.io/components/mqtt/
 - https://esphome.io/components/script/
 - https://esphome.io/components/time/sntp/
+
+## Logs MQTT (18 de septiembre de 2026)
+
+Los logs se publican en `gate/${device_name}/log` con nivel `INFO`. Para depuración temporal puede cambiarse a `DEBUG`. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
