@@ -16,3 +16,7 @@ Se corrigieron recent_ids y recent_results: initial_value usa ahora std::vector<
 ## Actualización de logs — 18 de septiembre de 2026
 
 Se incorporó la configuración de logs MQTT enviada por el usuario y se separó `topic_prefix: null`, que había quedado dentro de un comentario. Revisión del cambio realizada; esta actualización no se ha compilado ni cargado al dispositivo desde esta tarea.
+
+## LED de conexión — 18 de septiembre de 2026
+
+Ambos YAML validados y código C++ generado correctamente con ESPHome local, usando secretos ficticios. Se verificó la disponibilidad de los métodos is_connected de Wi-Fi y MQTT. ESPHome advierte que GPIO15 es un pin de arranque; en esta placa ya está conectado al LED de usuario, no se añaden resistencias ni hardware externo. No se realizó compilación completa, carga OTA ni prueba física de estos patrones. Los tiempos del pulso y protección permanecen en 500 y 6000 ms.

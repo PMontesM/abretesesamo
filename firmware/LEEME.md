@@ -95,3 +95,19 @@ No se ha flasheado el dispositivo ni enviado una orden MQTT real desde esta tare
 ## Logs MQTT (18 de septiembre de 2026)
 
 Los logs se publican en `gate/${device_name}/log` con nivel `INFO`. Para depuración temporal puede cambiarse a `DEBUG`. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
+
+## LED de conexión — XIAO ESP32-C6
+
+El LED de usuario integrado (GPIO15, activo en bajo) indica únicamente conectividad y reloj:
+
+- Lento: 500 ms encendido / 500 ms apagado durante la conexión inicial (hasta 60 segundos) o mientras espera hora válida con MQTT conectado.
+- Conectado: destello de 100 ms cada 3 segundos cuando Wi-Fi, MQTT y hora están listos. No indica que el portón esté físicamente abierto ni que el backend haya liberado una revisión.
+- Rápido: 200 ms encendido / 200 ms apagado si pierde Wi-Fi o MQTT después de conectar, o si no conecta durante el primer minuto.
+
+No hay patrones de apertura o cooldown. El LED del módulo de relé sigue reflejando su propia activación. La lógica del LED no publica mensajes ni usa esperas bloqueantes. Apagado sin destellos no es confirmación de disponibilidad.
+
+Archivos completos: mserrano3-principal.yaml para Edificio y mserrano3-estacionamiento.yaml para Estacionamiento. Cada dispositivo debe conservar sus propias credenciales en secrets.yaml; no cargar el archivo de Principal en ambos.
+
+Validar e instalar el archivo correspondiente desde ESPHome, conservando los secretos. Comprobar los tres patrones y la recuperación de conexión en banco antes de conectar al portón.
+
+Referencia del pin: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/#pin-map

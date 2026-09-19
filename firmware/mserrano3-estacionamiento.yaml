@@ -1,6 +1,6 @@
 substitutions:
-  device_name: mserrano3-principal
-  friendly_name: "Portón Edificio"
+  device_name: mserrano3-estacionamiento
+  friendly_name: "Serrano Estacionamiento"
   # Valor de banco de pruebas. Ajustar a la especificación de la entrada del equipo.
   relay_pulse_ms: "500"
   relay_cooldown_ms: "6000"
