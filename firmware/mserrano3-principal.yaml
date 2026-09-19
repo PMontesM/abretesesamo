@@ -21,6 +21,7 @@ esphome:
   on_shutdown:
     then:
       - output.turn_off: relay_output
+      - logger.log: "Apagado controlado del firmware; salida del rele desactivada"
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -29,6 +30,16 @@ esp32:
     type: esp-idf
 
 logger:
+  level: DEBUG
+
+debug:
+  update_interval: 60s
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      id: last_reset_reason
+      internal: true
 ota:
   - platform: esphome
     password: !secret ota_password
@@ -104,8 +115,11 @@ mqtt:
   discover_ip: false
   log_topic:
     topic: gate/${device_name}/log
-    level: INFO   # DEBUG mientras depuras
+    level: DEBUG   # Volver a INFO al terminar el diagnostico
+    retain: false
   topic_prefix: null
+  # ESPHome reinicia tras 15 minutos sin MQTT (valor previo por defecto).
+  reboot_timeout: 15min
   keepalive: 15s
   # Evita bloquear el bucle de control al publicar por una conexión lenta.
   idf_send_async: true
@@ -187,18 +201,18 @@ interval:
   - interval: 100ms
     then:
       - lambda: |-
-          static bool was_connected = false;
+          static bool was_ready = false;
           static uint16_t startup_ticks = 0;
           static uint8_t previous_mode = 255;
           static uint8_t tick = 0;
           if (startup_ticks < 600) ++startup_ticks;
           const bool connected = id(relay_wifi).is_connected() && id(mqtt_client).is_connected();
-          if (connected) was_connected = true;
-          // 0: iniciando/sin hora; 1: conectado con hora; 2: sin conexion.
-          const uint8_t mode = connected ? (id(clock_utc).now().is_valid() ? 1 : 0)
-              : ((!was_connected && startup_ticks < 600) ? 0 : 2);
+          const bool ready = connected && id(clock_utc).now().is_valid();
+          if (ready) was_ready = true;
+          // 0: arranque (max. 60s); 1: conexion y hora listas; 2: fallo local.
+          const uint8_t mode = ready ? 1 : ((!was_ready && startup_ticks < 600) ? 0 : 2);
           if (mode != previous_mode) { tick = 0; previous_mode = mode; }
-          const uint8_t period = mode == 1 ? 30 : (mode == 0 ? 10 : 4);
+          const uint8_t period = mode == 1 ? 1 : (mode == 0 ? 10 : 4);
           const uint8_t on_ticks = mode == 1 ? 1 : (mode == 0 ? 5 : 2);
           if (tick < on_ticks) id(connection_led).turn_on();
           else id(connection_led).turn_off();
@@ -238,6 +252,8 @@ script:
                   if (std::isfinite(id(wifi_signal_sensor).state)) root["rssi"] = (int) id(wifi_signal_sensor).state;
                   root["uptime_s"] = (uint32_t) (millis() / 1000);
                   root["boot_id"] = id(boot_id);
+                  root["reset_reason"] = id(last_reset_reason).state;
+                  root["firmware_revision"] = "2026-09-18-diagnostics-1";
                   root["sampled_at"] = id(clock_utc).now().is_valid() ? id(clock_utc).now().timestamp : 0;
 
   - id: pulse_relay

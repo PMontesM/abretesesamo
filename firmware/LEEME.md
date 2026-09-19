@@ -94,15 +94,15 @@ No se ha flasheado el dispositivo ni enviado una orden MQTT real desde esta tare
 
 ## Logs MQTT (18 de septiembre de 2026)
 
-Los logs se publican en `gate/${device_name}/log` con nivel `INFO`. Para depuración temporal puede cambiarse a `DEBUG`. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
+Los logs se publican en `gate/${device_name}/log` con nivel `DEBUG` durante el diagnóstico actual. Al terminar, volver a `INFO`. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
 
 ## LED de conexión — XIAO ESP32-C6
 
 El LED de usuario integrado (GPIO15, activo en bajo) indica únicamente conectividad y reloj:
 
-- Lento: 500 ms encendido / 500 ms apagado durante la conexión inicial (hasta 60 segundos) o mientras espera hora válida con MQTT conectado.
-- Conectado: destello de 100 ms cada 3 segundos cuando Wi-Fi, MQTT y hora están listos. No indica que el portón esté físicamente abierto ni que el backend haya liberado una revisión.
-- Rápido: 200 ms encendido / 200 ms apagado si pierde Wi-Fi o MQTT después de conectar, o si no conecta durante el primer minuto.
+- Lento: 500 ms encendido / 500 ms apagado durante el arranque, hasta 60 segundos mientras consigue conexión y hora.
+- Conectado: encendido fijo cuando Wi-Fi, MQTT y hora están listos. No indica que el portón esté físicamente abierto ni que el backend haya liberado una revisión.
+- Rápido: 200 ms encendido / 200 ms apagado si pierde conexión u hora válida tras estar listo, o si no está listo al terminar el primer minuto.
 
 No hay patrones de apertura o cooldown. El LED del módulo de relé sigue reflejando su propia activación. La lógica del LED no publica mensajes ni usa esperas bloqueantes. Apagado sin destellos no es confirmación de disponibilidad.
 
@@ -111,3 +111,17 @@ Archivos completos: mserrano3-principal.yaml para Edificio y mserrano3-estaciona
 Validar e instalar el archivo correspondiente desde ESPHome, conservando los secretos. Comprobar los tres patrones y la recuperación de conexión en banco antes de conectar al portón.
 
 Referencia del pin: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/#pin-map
+
+## Diagnóstico de reinicios
+
+Los logs MQTT usan DEBUG temporalmente, con retain false, en gate/<device_name>/log. En HiveMQ suscribirse a ese topic antes de reproducir el problema. Los logs son en vivo: si el dispositivo pierde Wi-Fi o energía no puede transmitir el final del fallo.
+
+Para investigar reinicios, conectar USB y abrir Logs / Web Serial en ESPHome; guardar las líneas anteriores al reinicio y el arranque siguiente. Abrir una sesión serial también puede provocar un reinicio, que debe distinguirse de uno espontáneo.
+
+El mensaje retenido gate/<device_name>/health incluye reset_reason (motivo del último arranque reportado por ESPHome), boot_id, uptime_s, sampled_at y firmware_revision. Se publica al conectar, sincronizar la hora, cada cinco minutos y durante los cambios de estado existentes. Puede ser antiguo: comparar fecha y boot_id con /info. No constituye un historial de reinicios.
+
+Power-on indica un encendido; brownout señala una caída de tensión detectada; watchdog/panic orientan a bloqueo o fallo del software. Un reinicio de software no identifica por sí solo quién lo solicitó. MQTT conserva su política previa de reiniciar tras 15 minutos sin conexión, ahora explícita. No se añadió reinicio remoto ni otra política de recuperación.
+
+El LED fijo solo confirma Wi-Fi, sesión MQTT y reloj local; no verifica la conexión del Worker, sus credenciales, permisos, datos retenidos recientes o bloqueos por revisión. Si Comprobar conexión falla, guardar su mensaje exacto y los topics /info, /state y /health del mismo dispositivo. El Worker espera datos hasta 6 segundos y exige salud de hasta 6 minutos de antigüedad.
+
+Referencia: https://esphome.io/components/debug/
