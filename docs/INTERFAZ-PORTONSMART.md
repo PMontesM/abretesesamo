@@ -5,8 +5,8 @@ Panel y Mi Acceso parten de los HTML originales conservados en `frontend/referen
 ## Funciones
 
 - Panel: órdenes de hoy y ayer por hora, pases activos, vencimientos, historial con filtros y CSV, consultas de conexión y avisos basados en esas consultas.
-- Mi Acceso: mantener pulsado 600 ms, alternativa con confirmación, animación del icono, pases y actividad. El resultado confirma la orden comunicada por el dispositivo, no el movimiento físico del portón.
-- Pases: categorías Visita, Entrega y Servicio; un código para varios accesos autorizados; vigencias de 30 minutos, 2, 6 o 24 horas; modos reutilizable, visita y sin vencimiento. Compartir por WhatsApp, copiar y revocar.
+- Mi Acceso: mantener pulsado 400 ms, alternativa con confirmación, animación del icono, pases y actividad. El resultado confirma la orden comunicada por el dispositivo, no el movimiento físico del portón.
+- Pases: tipos Con vigencia, Un solo uso (visita de diez minutos) y Permanente; un código para varios accesos autorizados; vigencias de 30 minutos, 2, 6 o 24 horas; modos reutilizable, visita y sin vencimiento. Compartir por WhatsApp, copiar y revocar.
 - Las visitas comparten diez minutos desde la primera orden satisfactoria, incluso entre varios portones. El visitante elige el acceso y confirma antes del primer uso.
 - Extensión de 30 minutos para reutilizables vigentes que vencen en diez minutos, hasta siete días desde su creación. No modifica visitas ni recupera pases revocados o vencidos.
 - Usuarios, lista completa de códigos, superadministración e ingreso de visitantes conservan sus funciones y la marca PortonSmart.
@@ -33,7 +33,7 @@ Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. 
 
 ## Opciones integradas en el diseño nuevo
 
-El formulario inicia en Una visita e incluye Hoy, Mañana y fecha/hora personalizada, también para pases multiacceso. Copiar entrega el mensaje completo con código, enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.
+El formulario inicia en Una visita e incluye Hoy, Mañana y fecha/hora personalizada, también para pases multiacceso. Copiar entrega solo el código; WhatsApp comparte el detalle con enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.
 
 ## Superadministración
 
@@ -44,3 +44,9 @@ Administrar edificio conserva la identidad del superadministrador y abre la gest
 Los estados consultados caducan a los dos minutos. El resumen no conecta a MQTT; solo lo hace el botón Comprobar. Las versiones de firmware se muestran a partir de esas consultas durante la sesión, con Sin consultar cuando no hay datos. No se ofrece actualización masiva OTA. El inventario muestra hasta 500 relés y la auditoría los últimos 200 eventos. Las cifras de revisión cuentan registros, que pueden corresponder a una misma operación.
 
 No requiere migración de base de datos ni cambios de firmware.
+
+## Recorrido unificado de visitantes y residentes
+
+Todos mis códigos permanece dentro de Mi Acceso, con consulta paginada, filtro de estado y búsqueda por código exacto. El formulario ofrece Con vigencia, Un solo uso (una visita con diez minutos de reintentos) y Permanente; oculta las fechas para el permanente. Al crear se muestra una tarjeta con código, accesos, vigencia y acciones de copiar solo el código o compartir instrucciones por WhatsApp.
+
+La apertura del residente usa pulsación de 400 ms, sin selección de texto ni menú de pulsación prolongada en el control; cancelar el gesto detiene el envío. La alternativa abre una confirmación con el diseño de PortonSmart. En visitantes la animación está dentro del botón y el verde indica Orden confirmada, sin una segunda leyenda de éxito. Permanecen los errores y la cuenta regresiva de la visita. Una confirmación no demuestra movimiento físico sin sensores.

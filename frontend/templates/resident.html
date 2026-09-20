@@ -18,7 +18,7 @@
         <span class="w-6 flex justify-center"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span><span class="ml-2">Mis accesos</span>
       </a>
       <a href="#pases" @click="selectTab('pases')" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span><span class="ml-2">Pases de visita</span>
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span><span class="ml-2">Códigos activos</span>
       </a>
       <a href="#actividad" @click="selectTab('actividad')" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></span><span class="ml-2">Historial</span>
@@ -30,7 +30,7 @@
       <a href="#" @click.prevent="support()" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span><span class="ml-2">Soporte</span>
       </a>
-      <a :href="legacyUrl" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+      <a href="#todos-codigos" @click="showCodes()" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Todos mis códigos</span>
       </a>
     </nav>
@@ -121,9 +121,9 @@
       <section id="pases" class="mt-14" aria-labelledby="t-pases">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
-            <h2 id="t-pases" class="text-white font-bold text-base">Pases de visita activos</h2>
+            <h2 id="t-pases" class="text-white font-bold text-base">Códigos activos</h2>
             <button @click="openSheet()" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
-              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Nuevo pase
+              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Nuevo código
             </button>
           </div>
 
@@ -133,7 +133,7 @@
                 <i class="fa-solid fa-qrcode text-2xl text-gray-300" aria-hidden="true"></i>
                 <p class="mt-3 text-sm font-medium text-material-dark">No tienes pases activos</p>
                 <p class="text-xs text-material-text mt-1">Crea un pase para una visita, una entrega o un servicio.</p>
-                <button @click="openSheet()" class="mt-4 text-sm font-semibold text-white bg-material-dark px-4 py-2.5">Crear pase</button>
+                <button @click="openSheet()" class="mt-4 text-sm font-semibold text-white bg-material-dark px-4 py-2.5">Crear código</button>
               </div>
             </template>
 
@@ -165,7 +165,7 @@
                   </div>
 
                   <div class="border-t border-material-border grid" :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'">
-                    <button @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar acceso completo">
+                    <button @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar código">
                       <i class="fa-regular fa-copy" aria-hidden="true"></i>Copiar</button>
                     <button @click="share(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Compartir pase">
                       <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Compartir</button>
@@ -184,6 +184,7 @@
       </section>
 
       <!-- ACTIVIDAD -->
+<section id="todos-codigos" class="mt-14 bg-white shadow-soft p-6"><h2 class="font-bold bg-material-dark text-white shadow-floating px-6 py-4 -mx-2 -mt-12">Todos mis códigos</h2><form @submit.prevent="loadCodes(0)" class="mt-4 flex flex-wrap gap-3"><label class="text-sm">Código exacto<input x-model="codeSearch" maxlength="6" inputmode="numeric" class="block border p-2"></label><label class="text-sm">Estado<select aria-label="Estado del código" x-model="codeState" class="block border p-2"><option value="">Todos</option><option value="current">Vigentes y por revisar</option><option value="expired">Vencidos</option><option value="revoked">Revocados</option><option value="used">Utilizados</option></select></label><button :disabled="codeLoading" class="bg-material-dark text-white px-4 py-2 self-end">Buscar códigos</button></form><div class="grid md:grid-cols-2 gap-4 mt-5"><template x-for="p in allCodes" :key="p.id"><article class="border p-4"><h3 class="font-bold" x-text="p.name"></h3><p class="font-mono text-xl my-2" x-text="grouped(p.code)"></p><p class="text-sm" x-text="accessLabel(p)"></p><p class="text-xs mt-2" x-text="expiryText(p)"></p><p class="text-xs mt-2" x-text="codeStatus(p)"></p><button @click="copy(p)" class="text-sm underline mr-4">Copiar código</button><button x-show="p.status === 'active'" @click="share(p)" class="text-sm underline">WhatsApp</button><button x-show="p.status === 'active' || p.status === 'pending' || p.status === 'uncertain'" @click="confirmRevoke(p)" class="block text-sm text-red-600 mt-2" x-text="armed === 'r'+p.id ? 'Confirmar revocación' : 'Revocar'"></button></article></template></div><div class="flex justify-between mt-4"><button @click="previousCodes()" :disabled="codeLoading || codePage === 0">Anterior</button><span class="text-xs" x-text="'Página '+(codePage+1)"></span><button @click="nextCodes()" :disabled="codeLoading || allCodes.length < 100">Siguiente</button></div><p x-show="allCodes.length === 0" class="text-sm mt-3">Consulta tus códigos con los filtros de arriba.</p></section>
       <section id="actividad" class="mt-14" aria-labelledby="t-act">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
@@ -250,7 +251,7 @@
           class="relative bg-white w-full md:max-w-md shadow-floating max-h-[92vh] overflow-y-auto"
           x-show="sheet" x-transition:enter="transition duration-200" x-transition:enter-start="translate-y-6 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
       <div class="px-6 py-4 bg-material-dark flex items-center justify-between">
-        <h2 id="sheet-title" class="text-white font-bold">Nuevo pase de visita</h2>
+        <h2 id="sheet-title" class="text-white font-bold">Nuevo código</h2>
         <button type="button" @click="sheet = false" class="on-dark text-white/80 hover:text-white w-8 h-8" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="p-6 space-y-5">
@@ -261,22 +262,7 @@
                  :aria-invalid="formError && !form.name.trim() ? 'true' : 'false'">
         </div>
 
-        <fieldset>
-          <legend class="text-sm font-medium text-material-dark">Tipo</legend>
-          <div class="mt-1.5 grid grid-cols-3">
-            <template x-for="t in typeNames" :key="t">
-              <label class="cursor-pointer">
-                <input type="radio" name="type" class="peer sr-only" :value="t" x-model="passCategory">
-                <span class="flex items-center justify-center gap-2 border border-gray-300 -ml-px first:ml-0 py-2.5 text-sm text-material-dark peer-checked:bg-material-dark peer-checked:text-white peer-checked:border-material-dark peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-material-dark">
-                  <i :class="types[t]" class="text-xs" aria-hidden="true"></i><span x-text="t"></span>
-                </span>
-              </label>
-            </template>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend class="text-sm font-medium text-material-dark">Vigencia</legend><label for="pass-mode" class="sr-only">Uso del pase</label><select id="pass-mode" x-model="passMode" class="w-full border border-gray-300 p-2 text-sm mb-2 text-material-dark"><option value="repeat">Reutilizable hasta el vencimiento</option><option value="visit">Una visita · 10 minutos desde el primer uso</option><option value="unlimited">Sin vencimiento</option></select><p x-show="form.mode === 'visit'" class="text-xs mb-2">La duración indica hasta cuándo puede comenzar la visita.</p>
+        <fieldset><legend class="text-sm font-medium text-material-dark">Tipo</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['repeat','Con vigencia'],['visit','Un solo uso'],['unlimited','Permanente']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="mode" class="peer sr-only" :value="o[0]" x-model="passMode"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><p x-show="form.mode === 'visit'" class="text-xs mt-3">Una visita: desde la primera orden confirmada tendrás 10 minutos para volver a abrir.</p><p x-show="form.mode === 'unlimited'" class="text-xs mt-3">Funciona hasta que lo revoques.</p></fieldset><fieldset x-show="form.mode !== 'unlimited'"><legend class="text-sm font-medium text-material-dark" x-text="form.mode === 'visit' ? 'Puede comenzar hasta' : 'Vigencia'"></legend>
           <label for="deadline-preset" class="block text-sm mt-3">Fecha límite</label><select id="deadline-preset" x-model="deadlinePreset" :disabled="form.mode === 'unlimited'" class="w-full border border-gray-300 p-2 text-sm mt-1"><option value="quick">Duración rápida</option><option value="today">Hoy</option><option value="tomorrow">Mañana</option><option value="custom">Elegir fecha y hora</option></select><div x-show="deadlinePreset === 'custom' && form.mode !== 'unlimited'" class="mt-3"><label for="custom-deadline" class="block text-sm">Fecha y hora límite</label><input id="custom-deadline" type="datetime-local" x-model="customDeadline" class="w-full border border-gray-300 p-2"></div>
           <div x-show="deadlinePreset === 'quick' && form.mode !== 'unlimited'" class="mt-1.5 grid grid-cols-4">
             <template x-for="o in [[30,'30 min'],[120,'2 h'],[360,'6 h'],[1440,'24 h']]" :key="o[0]">
@@ -299,11 +285,13 @@
       </div>
       <div class="px-6 pb-6 flex gap-3">
         <button type="button" @click="sheet = false" class="flex-1 py-3 border border-gray-300 text-sm font-semibold text-material-dark hover:bg-gray-50">Cancelar</button>
-        <button type="submit" :disabled="busy" class="flex-1 py-3 bg-material-dark text-white text-sm font-semibold hover:bg-material-darker">Crear pase</button>
+        <button type="submit" :disabled="busy" class="flex-1 py-3 bg-material-dark text-white text-sm font-semibold hover:bg-material-darker">Crear código</button>
       </div>
     </form>
   </div>
 
+<div x-show="confirmTarget" x-cloak x-trap.inert.noscroll="confirmTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Confirmar apertura"><div class="bg-white shadow-floating w-full max-w-md"><h2 class="bg-material-dark text-white font-bold px-6 py-4">Confirmar apertura</h2><div class="p-6"><p>¿Enviar una orden a <strong x-text="confirmName"></strong>?</p><div class="flex justify-end gap-3 mt-6"><button @click="confirmTarget = null" class="border px-4 py-3">Cancelar</button><button @click="confirmSend()" class="bg-material-dark text-white px-4 py-3">Enviar orden</button></div></div></div></div>
+<div x-show="resultCard" x-cloak x-trap.inert.noscroll="resultCard" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Código creado"><div class="bg-white shadow-floating w-full max-w-md"><h2 class="bg-material-dark text-white font-bold px-6 py-4">Código creado</h2><template x-if="resultCard"><div class="p-6"><h3 class="font-bold" x-text="resultCard.name"></h3><p class="font-mono text-3xl my-4" x-text="grouped(resultCard.code)"></p><p x-text="resultCard.type"></p><p class="text-sm mt-2" x-text="accessLabel(resultCard)"></p><p class="text-sm mt-2" x-text="expiryText(resultCard)"></p><p x-show="resultCard.visit" class="text-xs mt-3">Una visita: 10 minutos para reintentar desde la primera orden confirmada.</p><div class="grid grid-cols-2 gap-3 mt-6"><button @click="copy(resultCard)" class="border p-3 text-sm">Copiar código</button><button @click="share(resultCard)" class="bg-material-dark text-white p-3 text-sm">Compartir por WhatsApp</button></div><button @click="resultCard = null" class="w-full mt-4 p-2 text-sm">Cerrar</button></div></template></div></div>
   <!-- TOAST -->
   <div x-show="toastOn" x-cloak x-transition.opacity role="status" aria-live="polite"
        class="fixed z-50 bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">

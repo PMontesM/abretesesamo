@@ -11,3 +11,5 @@
 @media(prefers-reduced-motion:reduce){main{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 .gate-open .gate-left{transform:translateX(-6px);transition:transform .6s}.gate-open .gate-right{transform:translateX(6px);transition:transform .6s}
+
+.hold,.hold *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.hold{touch-action:none}

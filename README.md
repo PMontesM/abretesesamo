@@ -44,7 +44,7 @@ INSTALACION.md               Guía detallada
 
 ## Validación realizada
 
-- 74 pruebas automáticas, incluida una instalación vacía completa.
+- 76 pruebas automáticas, incluida una instalación vacía completa.
 - Interfaz probada en navegador con el Worker completo empaquetado y minificado: login, selección, creación y uso de códigos, historial, edición y separación de edificios, menú móvil y contenido hostil.
 - Aperturas probadas con respuestas simuladas; no se enviaron órdenes a dispositivos reales.
 - Para actualizar una instalación existente, sigue ACTUALIZACION-AUDITORIA.md. La integración física debe verificarse en sitio.

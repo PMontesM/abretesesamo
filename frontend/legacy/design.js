@@ -14,4 +14,6 @@ section,.card{border:0;border-radius:7px;padding:24px;margin-bottom:28px;box-sha
 .entry-building{text-align:center;font-size:.85rem;color:var(--muted);margin:-12px 0 22px}.chart-caption{font-size:.78rem}.mobile-tabs button svg{min-height:20px}.pass-grid>.empty-state{grid-column:1/-1}.gate-card{margin-bottom:0}.gate-card .text-button{min-height:44px}.pass-card .pass-top .status-pill{flex-shrink:0}.entry .message{scroll-margin:24px}.section-header .secondary{color:#fff;background:#ffffff12;border-color:#ffffff50}.section-header .secondary:hover{background:#ffffff26}
 @media(max-width:420px){.filter-form{grid-template-columns:1fr}.filter-form>button{grid-column:auto}.stat-label{max-width:145px}.view-heading h2{font-size:1.35rem}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}}
+
+body.entry section,body.entry dialog,body.entry button,body.entry input,body.entry select,body.entry .entry-choices{border-radius:0}body.entry dialog h2{background:#344767;color:white;padding:16px 24px;margin:-28px -28px 24px;font-size:1rem}body.entry section>h2{background:#344767;color:white;padding:16px 20px;margin:-28px -28px 24px;font-size:1rem}@media(max-width:760px){body.entry dialog h2{margin:-24px -20px 24px}body.entry section>h2{margin:-26px -22px 24px}}
 `;
