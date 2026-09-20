@@ -95,6 +95,7 @@ async function route(request,env,ctx) {
     return json({ok:false,error:'Tu sesión terminó. Vuelve a iniciar sesión.'},401);
   }
   if(rest==='/admin'&&request.method==='GET')return html(getAdminHTML(tenant,user));
+  if(rest==='/admin/dashboard'&&request.method==='GET')return json({ok:true,...await db.dashboard(env,user)});
   if(rest==='/admin/logout'&&request.method==='POST'){
     await env.DB.prepare('UPDATE users SET session_version=session_version+1 WHERE tenant_id=? AND id=?').bind(tenant.id,user.id).run();
     return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie()}});

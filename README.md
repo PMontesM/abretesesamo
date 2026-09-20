@@ -1,8 +1,10 @@
-# Ábrete Sésamo — proyecto completo, instalación desde cero
+# PortonSmart — plataforma de control de accesos
 
-Esta entrega contiene el código completo y las correcciones acumuladas, incluido el diseño restaurado. Es para instalar en **una base D1 nueva y vacía**. No necesitas ejecutar archivos de limpieza ni las migraciones de las entregas anteriores.
+Esta entrega contiene el código completo y las correcciones acumuladas, incluida la interfaz PortonSmart. Es para instalar en **una base D1 nueva y vacía**. No necesitas ejecutar archivos de limpieza ni las migraciones de las entregas anteriores.
 
 Empieza por **[INSTALACION.md](INSTALACION.md)**. Los comandos están escritos para la terminal de Windows que ya utilizas.
+
+La plataforma se llamaba Ábrete Sésamo. Los enlaces y nombres técnicos existentes se conservan. Consulta [la interfaz PortonSmart](docs/INTERFAZ-PORTONSMART.md) para conocer las funciones y adaptaciones del nuevo diseño.
 
 ## Qué incluye
 

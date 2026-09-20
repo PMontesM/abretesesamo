@@ -185,6 +185,15 @@ export async function listLogs(env,tenantId,user) {
   const count=await env.DB.prepare(`SELECT COUNT(*) AS count FROM logs WHERE tenant_id=? AND (? IS NULL OR owner_id=?) AND at>=? AND outcome='sent'`).bind(tenantId,owner,owner,Date.now()-86400000).first();
   return {logs,opensLast24:count.count};
 }
+export async function dashboard(env,user) {
+  const now=Date.now(),owner=user.role==='master'?null:user.id;
+  const [totals,passes,hours]=await Promise.all([
+    env.DB.prepare("SELECT SUM(CASE WHEN at>=? AND outcome='sent' THEN 1 ELSE 0 END) AS sent, SUM(CASE WHEN at>=? AND outcome IN ('uncertain','pending','not_sent') THEN 1 ELSE 0 END) AS attention, MAX(CASE WHEN outcome='sent' THEN at END) AS lastSent FROM logs WHERE tenant_id=? AND (? IS NULL OR owner_id=?)").bind(now-86400000,now-86400000,user.tenant_id,owner,owner).first(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM codes c JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id WHERE c.tenant_id=? AND (? IS NULL OR c.owner_id=?) AND c.status='active' AND g.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)").bind(user.tenant_id,owner,owner,now).first(),
+    rows(env.DB.prepare("SELECT CAST(at/3600000 AS INTEGER)*3600000 AS hour, COUNT(*) AS count FROM logs WHERE tenant_id=? AND (? IS NULL OR owner_id=?) AND at>=? AND outcome='sent' GROUP BY hour ORDER BY hour").bind(user.tenant_id,owner,owner,Math.floor(now/3600000)*3600000-23*3600000))
+  ]);
+  return {serverNow:now,sent:totals.sent||0,attention:totals.attention||0,lastSent:totals.lastSent,activeCodes:passes.count,hours};
+}
 export async function listTenants(env) {
   const tenants=await rows(env.DB.prepare("SELECT t.*, (SELECT COUNT(*) FROM codes c WHERE c.tenant_id=t.id AND c.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM direct_operations o WHERE o.tenant_id=t.id AND o.status IN ('pending','uncertain')) AS needs_review FROM tenants t ORDER BY needs_review DESC,t.created_at DESC"));
   const gates=await rows(env.DB.prepare('SELECT id,tenant_id,name,status FROM gates ORDER BY created_at,id'));
