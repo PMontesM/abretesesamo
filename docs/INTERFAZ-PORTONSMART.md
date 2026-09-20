@@ -34,3 +34,13 @@ Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. 
 ## Opciones integradas en el diseño nuevo
 
 El formulario inicia en Una visita e incluye Hoy, Mañana y fecha/hora personalizada, también para pases multiacceso. Copiar entrega el mensaje completo con código, enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.
+
+## Superadministración
+
+El resumen adopta `frontend/reference/super.html` mediante Alpine CSP y recursos locales. Incluye edificios con búsqueda, cuentas activas/suspendidas, órdenes enviadas hoy, administradores, auditoría y registros pendientes de códigos, órdenes directas y relés. Las cuentas de edificios no pueden consultar la API de plataforma.
+
+Administrar edificio conserva la identidad del superadministrador y abre la gestión existente de portones, usuarios, permisos y revisiones. Nuevo edificio, configuración MQTT, inventario, reportes y contraseña siguen disponibles con navegación de regreso al resumen. No hay suplantación de cuentas, planes comerciales ni facturación simulada.
+
+Los estados consultados caducan a los dos minutos. El resumen no conecta a MQTT; solo lo hace el botón Comprobar. Las versiones de firmware se muestran a partir de esas consultas durante la sesión, con Sin consultar cuando no hay datos. No se ofrece actualización masiva OTA. El inventario muestra hasta 500 relés y la auditoría los últimos 200 eventos. Las cifras de revisión cuentan registros, que pueden corresponder a una misma operación.
+
+No requiere migración de base de datos ni cambios de firmware.

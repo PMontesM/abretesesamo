@@ -1,3 +1,4 @@
+import {superPanel} from './lib/super-panel.js';
 import {relayStatus,pendingRelays,resolveRelay,RelayError} from './lib/relay.js';
 import {listInventory,registerRelay,requireInventory,discoverRelays} from './lib/relay-inventory.js';
 import {relaySettingsSummary,saveRelayCredentials} from './lib/relay-settings.js';
@@ -21,12 +22,13 @@ export async function handlePlatform(request,env,ctx,url){
   }
   const admin=await verifySession(request,env,null,true);
   if(!admin)return Response.json({ok:false,error:'Tu sesión terminó. Vuelve a iniciar sesión.'},{status:401});
-  if(rest==='/admin'&&request.method==='GET')return html(getPlatformAdminHTML(admin));
+  if(rest==='/admin'&&request.method==='GET')return html(getPlatformAdminHTML(admin,url.searchParams.get('view'),url.searchParams.get('tenantId')));
   if(rest==='/logout'&&request.method==='POST'){
     await env.DB.prepare('UPDATE platform_admins SET session_version=session_version+1 WHERE id=?').bind(admin.id).run();
     return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie(true)}});
   }
   if(request.method==='GET'){
+    if(rest==='/api/panel')return json(await superPanel(env,url.searchParams.get('offset')));
     if(rest==='/api/relay-inventory')return json({devices:await listInventory(env)});
     if(rest==='/api/relay-settings')return json({settings:await relaySettingsSummary(env)});
     if(rest==='/api/tenants')return json({tenants:await db.listTenants(env)});

@@ -1,3 +1,4 @@
+import {superApp} from './super.js';
 import Alpine from '@alpinejs/csp';
 import focus from '@alpinejs/focus';
 import {portonApp,adminApp} from './presentation.js';
@@ -53,7 +54,7 @@ function resident(){return merge(portonApp(),common,{
 });}
 function admin(){return merge(adminApp(),common,{
  openSettings(){this.settingsOpen=true;this.drawer=false;},selectResult(value){this.result=value;this.limit=6;},
- settingsOpen:false,supportPhone:config.tenant.supportPhone||'',settingsMessage:'',
+ settingsOpen:false,supportPhone:config.tenant?.supportPhone||'',settingsMessage:'',
  async saveSettings(){if(this.busy)return;this.busy=true;this.settingsMessage='';await this.run(async()=>{const d=await api('/admin/support',{phone:this.supportPhone});this.supportPhone=d.phone;this.tenant.supportPhone=d.phone;this.settingsMessage='Contacto de ayuda guardado';});this.busy=false;},
  legacyUrl:base+'/admin?view=passes',activeCodes:0,attemptsRejected:0,lastSent:null,alerts:[],dismissed:[],
  get delta(){return this.totalAyer?Math.round((this.totalHoy/this.totalAyer-1)*100):0;},
@@ -78,4 +79,4 @@ function admin(){return merge(adminApp(),common,{
  async check(d){if(d.testing)return;d.testing=true;await this.run(()=>api('/admin/connection',{gateId:d.id}));d.testing=false;await this.refresh();},
  exportCsv(){csvDownload([['Usuario','Referencia','Portón','Resultado','Fecha'],...this.filtered.map(r=>[r.who,r.method,r.gate,r.ok?'Orden enviada':r.reason,r.ago])]);},
 });}
-Alpine.plugin(focus);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();
+Alpine.plugin(focus);Alpine.data('superadmin',superApp);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();

@@ -10,7 +10,7 @@ const {design}=await import('./legacy/design.js');writeFileSync('legacy/compiled
 const output=await build({absWorkingDir:root,entryPoints:{app:'src/app.js',style:'src/compiled.css',legacy:'legacy/index.js',legacyStyle:'legacy/compiled.css'},bundle:true,minify:true,metafile:true,outdir:'dist/assets',entryNames:'[name]-[hash]',assetNames:'[name]-[hash]',loader:{'.woff2':'file','.woff':'file','.ttf':'file'},target:'es2022'});
 const fresh=new Set(Object.keys(output.metafile.outputs).map(p=>p.split('/').pop()));for(const name of readdirSync('dist/assets'))if(!fresh.has(name))unlinkSync(resolve('dist/assets',name));
 const assets={};for(const [path,data] of Object.entries(output.metafile.outputs))if(data.entryPoint)assets[data.entryPoint.endsWith('app.js')?'app':data.entryPoint.endsWith('index.js')?'legacy':data.entryPoint.startsWith('legacy/')?'legacyStyle':'style']='/assets/'+path.split('/').pop();
-const templates=Object.fromEntries(['admin','resident'].map(name=>[name,readFileSync('templates/'+name+'.html','utf8')]));
+const templates=Object.fromEntries(['admin','resident','super'].map(name=>[name,readFileSync('templates/'+name+'.html','utf8')]));
 writeFileSync('../src/html/templates.js','// Generated from frontend/templates.\nexport const templates='+JSON.stringify(templates)+';\nexport const assets='+JSON.stringify(assets)+';\n');
 writeFileSync('dist/_headers','/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n  X-Content-Type-Options: nosniff\n');
 console.log('Frontend compilado: '+Object.keys(output.metafile.outputs).length+' archivos estáticos.');

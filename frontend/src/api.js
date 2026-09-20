@@ -1,5 +1,5 @@
 export const config=JSON.parse(document.getElementById('app-config').textContent);
-export const base='/t/'+config.tenant.slug;
+export const base=config.mode==='platform'?'':('/t/'+config.tenant.slug);
 export async function api(path,body){
  let response;try{response=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}catch{throw Error('Sin conexión. Consulta el estado antes de repetir una orden.');}
  const data=await response.json();if(!response.ok||!data.ok){if(response.status===401)location.href=base+'?access=resident';const error=Error(data.error||'No se pudo completar');error.operationClosed=data.operationClosed;throw error;}return data;
