@@ -9,9 +9,10 @@ export async function createPass(env,user,body){
  const label=required(body.label,'Nombre o referencia',60),category=body.category||'Visita';
  if(!['Visita','Entrega','Servicio'].includes(category))throw new InputError('Categoría inválida');
  const mode=body.mode||'repeat',minutes=Number(body.minutes);
- if(!['repeat','visit','unlimited'].includes(mode)||!([30,120,360,1440].includes(minutes)||mode==='unlimited'))throw new InputError('Vigencia inválida');
+ if(!['repeat','visit','unlimited'].includes(mode)||!(body.expiresAt!==undefined||[30,120,360,1440].includes(minutes)||mode==='unlimited'))throw new InputError('Vigencia inválida');
  if(!await takeAttempt(env,'create-code:'+user.id,30))throw new InputError('Espera antes de crear más pases');
- const now=Date.now(),expires=mode==='unlimited'?null:now+minutes*60000,token=crypto.randomUUID();
+ const now=Date.now(),expires=mode==='unlimited'?null:(body.expiresAt??now+minutes*60000),token=crypto.randomUUID();
+ if(expires!==null&&(!Number.isSafeInteger(expires)||expires<=now||expires>now+3650*86400000))throw new InputError('Elige una fecha futura válida');
  for(let i=0;i<20;i++){
   const n=crypto.getRandomValues(new Uint32Array(1))[0];if(n>=4294000000)continue;const code=String(n%1000000).padStart(6,'0');
   const insert=env.DB.prepare(`INSERT INTO codes(code,tenant_id,gate_id,label,owner,owner_id,single_use,expires_at,created_at,visit_mode,category,creation_token)

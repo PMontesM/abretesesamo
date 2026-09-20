@@ -30,3 +30,7 @@ npm run test:ui
 ```
 
 Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. Utilizan bases en memoria y dispositivos simulados. `src/html/templates.js` y `src/html/client.js` son generados: editar las fuentes de frontend y compilar.
+
+## Opciones integradas en el diseño nuevo
+
+El formulario inicia en Una visita e incluye Hoy, Mañana y fecha/hora personalizada, también para pases multiacceso. Copiar entrega el mensaje completo con código, enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.

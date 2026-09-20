@@ -26,7 +26,7 @@
         <span class="w-6 flex justify-center"><i class="fa-solid fa-key" aria-hidden="true"></i></span><span class="ml-2">Códigos y pases</span></a>
 
       <p class="px-3 text-xs font-medium text-material-text mt-6 mb-2">Sistema</p>
-      <a :href="usersUrl" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
+      <a href="#configuracion" @click.prevent="openSettings()" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Configuración</span></a>
     </nav>
     <div class="p-4 border-t border-material-border">
@@ -260,7 +260,7 @@
           <div class="px-5 md:px-6 pt-5 flex flex-col md:flex-row md:items-center gap-3">
             <div class="flex" role="group" aria-label="Filtrar por resultado">
               <template x-for="o in [['todos','Todos', log.length],['exito','Éxito', okCount],['rechazados','Rechazados', badCount]]" :key="o[0]">
-                <button @click="result = o[0]; limit = 6" :aria-pressed="result === o[0]"
+                <button @click="selectResult(o[0])" :aria-pressed="result === o[0]"
                         class="px-3 py-2 text-xs font-medium border -ml-px first:ml-0"
                         :class="result === o[0] ? 'bg-material-dark text-white border-material-dark relative' : 'border-gray-300 text-material-dark hover:bg-gray-50'">
                   <span x-text="o[1]"></span> <span class="opacity-70" x-text="o[2]"></span>
@@ -335,4 +335,4 @@
        class="fixed z-50 bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">
     <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i><span x-text="toastMsg"></span>
   </div>
-</body>
+<div x-show="settingsOpen" x-cloak x-trap.inert.noscroll="settingsOpen" @keydown.escape.window="settingsOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="settings-title"><form @submit.prevent="saveSettings()" class="bg-white shadow-floating w-full max-w-md"><h2 id="settings-title" class="bg-material-dark text-white font-bold px-6 py-4">Configuración del edificio</h2><div class="p-6 space-y-4"><p class="text-sm">Contacto de ayuda para residentes y visitantes.</p><label class="block text-sm">Teléfono de WhatsApp<input type="tel" x-model="supportPhone" class="mt-2 w-full border border-gray-300 p-2" placeholder="Código de país y número"></label><p class="text-xs">Incluye el código de país. Déjalo vacío para retirar el contacto. La conexión y asignación de relés se administran desde la plataforma del superadministrador.</p><p x-show="settingsMessage" x-text="settingsMessage" role="status" class="text-sm text-green-700"></p><div class="flex justify-end gap-3"><button type="button" @click="settingsOpen = false" class="border px-4 py-2">Cerrar</button><button :disabled="busy" class="bg-material-dark text-white px-4 py-2">Guardar configuración</button></div></div></form></div></body>
