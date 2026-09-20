@@ -24,3 +24,7 @@ Ambos YAML validados y código C++ generado correctamente con ESPHome local, usa
 ## LED fijo y diagnóstico de reinicios
 
 Ambos YAML pasan validación y generación C++ con ESPHome 2026.9.0 y secretos ficticios. Se añade reset_reason mediante debug y texto interno, incluido en health retenido. LED fijo en modo listo, lento durante arranque y rápido en fallo local. MQTT DEBUG temporal, logs no retenidos. Sin compilación completa ni carga al dispositivo en esta tarea. El diagnóstico no demuestra la causa de los fallos reportados.
+
+## Disponibilidad separada
+
+Actualización availability-2: validación y generación C++ local; compilación completa e instalación pendientes. Pruebas del backend verifican que offline prevalece sobre state online y que disponibilidad ausente o inválida impide enviar órdenes. Compatibilidad con info-1 y firmware legado. Sin pruebas de apertura sobre hardware.

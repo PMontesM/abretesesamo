@@ -1,6 +1,6 @@
 import {MQTTClient} from './mqtt.js';
 import {InputError} from './security.js';
-import {recordObservation,connectionState} from './relay-inventory.js';
+import {recordObservation,connectionState,requiresAvailability} from './relay-inventory.js';
 import {loadRelayCredentials,brokerEndpoint} from './relay-settings.js';
 export class RelayError extends Error {constructor(message,uncertain=false){super(message);this.uncertain=uncertain;}}
 export function deviceConfig(value){if(typeof value!=='string'||! /^[a-z0-9][a-z0-9-]{0,62}$/.test(value))throw new InputError('Identificador de dispositivo inválido: usa letras minúsculas, números y guiones');return JSON.stringify({deviceId:value});}
@@ -15,10 +15,10 @@ function parse(text){try{return JSON.parse(text);}catch{return null;}}
 function validInfo(i){return i?.protocol===2&&/^[a-f0-9]{32}$/.test(i.boot_id)&&Number.isInteger(i.pulse_ms)&&i.pulse_ms>=100&&i.pulse_ms<=2000&&Number.isInteger(i.cooldown_ms)&&i.cooldown_ms>=0&&i.cooldown_ms<=60000;}
 async function snapshot(reader,id,allowOffline=false){
   const root='gate/'+id+'/',deadline=Date.now()+6000,result={};
-  while(!result.state||!result.info||!result.health){
-    const e=await reader.wait(e=>e.type===3&&[root+'state',root+'info',root+'health'].includes(e.topic),Math.max(1,deadline-Date.now()));
-    const key=e.topic.slice(root.length);result[key]=key==='state'?e.payload:parse(e.payload);
-    if(allowOffline&&result.state==='offline')return {...result,observedAt:Date.now(),fresh:false};
+  while(!result.state||!result.info||!result.health||(requiresAvailability(result)&&result.availability===undefined)){
+    let e;try{e=await reader.wait(e=>e.type===3&&[root+'availability',root+'state',root+'info',root+'health'].includes(e.topic),Math.max(1,deadline-Date.now()));}catch(error){if(error.code==='MQTT_TIMEOUT')throw new RelayError(requiresAvailability(result)&&result.availability===undefined?'No llegó la disponibilidad del relé. Revisa el permiso de lectura de gate/+/#':'No llegaron los datos completos del dispositivo');throw error;}
+    const key=e.topic.slice(root.length);result[key]=['state','availability'].includes(key)?e.payload:parse(e.payload);
+    if(allowOffline&&(result.availability==='offline'||result.state==='offline'))return {...result,observedAt:Date.now(),fresh:false};
     if(Date.now()>=deadline)throw new RelayError('No llegaron los datos completos del dispositivo');
   }
   result.observedAt=Date.now();
@@ -28,12 +28,12 @@ async function snapshot(reader,id,allowOffline=false){
 export async function relayStatus(env,gate,connect=MQTTClient.connect){
   const id=device(gate);let reader,writer,saved,data;const checkedAt=Date.now();
   try{
-    saved=await credentials(env);reader=await connect(...account(saved));await reader.subscribe(['gate/'+id+'/state','gate/'+id+'/info','gate/'+id+'/health']);data=await snapshot(reader,id,true);
+    saved=await credentials(env);reader=await connect(...account(saved));await reader.subscribe(['gate/'+id+'/availability','gate/'+id+'/state','gate/'+id+'/info','gate/'+id+'/health']);data=await snapshot(reader,id,true);
     await recordObservation(env,id,{...data,observedAt:checkedAt},saved.savedAt);
     // Authenticate the sending account without publishing anything to the device.
     writer=await connect(...account(saved,true));
     const lock=await env.DB.prepare("SELECT status FROM relay_commands WHERE device_id=? AND (status IN ('pending','uncertain') OR (status='cooldown' AND release_at>?))").bind(id,Date.now()).first();
-    return {...data,connectionState:connectionState(data),deviceId:id,commandAuthenticated:true,lock:lock?.status||null,ready:!lock&&data.fresh&&data.state==='online'&&data.info.clock_ready===true};
+    return {...data,connectionState:connectionState(data),deviceId:id,commandAuthenticated:true,lock:lock?.status||null,ready:!lock&&connectionState(data)==='online'&&data.fresh&&data.state==='online'&&data.info.clock_ready===true};
   }
   catch(e){if(saved&&!data)await recordObservation(env,id,{state:'unknown',observedAt:checkedAt},saved.savedAt);throw new RelayError(e instanceof RelayError?e.message:'No se pudo comprobar la conexión MQTT. Revisa el servidor, las cuentas y sus permisos.');}finally{reader?.close();writer?.close();}
 }
@@ -49,11 +49,11 @@ export async function relayOpen(env,gate,sourceId,connect=MQTTClient.connect){
     if(!acquired[1].meta.changes)throw new RelayError('Hay una orden en curso, un tiempo de espera o una revisión pendiente para este relé');
     reserved=true;
     reader=await connect(...readCreds);
-    await reader.subscribe(['gate/'+id+'/state','gate/'+id+'/info','gate/'+id+'/health','gate/'+id+'/ack']);
+    await reader.subscribe(['gate/'+id+'/availability','gate/'+id+'/state','gate/'+id+'/info','gate/'+id+'/health','gate/'+id+'/ack']);
     const data=await snapshot(reader,id,true);
     await recordObservation(env,id,data,saved.savedAt);
-    if(data.state==='offline')throw new RelayError('El dispositivo está desconectado');
-    if(!data.fresh)throw new RelayError('El dispositivo no tiene información reciente o usa otro firmware');
+    if(connectionState(data)==='offline')throw new RelayError('El dispositivo está desconectado');
+    if(connectionState(data)==='unknown'||!data.fresh)throw new RelayError('El dispositivo no tiene información reciente o usa otro firmware');
     if(data.state!=='online'||data.info.clock_ready!==true)throw new RelayError('El dispositivo está desconectado, iniciando o atendiendo otra orden');
     writer=await connect(...writeCreds);
     const issued=Math.floor(Date.now()/1000),command={id:commandId,action:'OPEN',boot_id:data.info.boot_id,issued_at:issued,expires_at:issued+10};

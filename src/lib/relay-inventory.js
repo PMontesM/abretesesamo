@@ -2,7 +2,10 @@ import {InputError,required} from './security.js';
 import {MQTTClient} from './mqtt.js';
 import {loadRelayCredentials,brokerEndpoint} from './relay-settings.js';
 export function relayId(value){if(typeof value!=='string'||! /^[a-z0-9][a-z0-9-]{0,62}$/.test(value))throw new InputError('Identificador de relé inválido: usa minúsculas, números y guiones');return value;}
+export function requiresAvailability(data){return data.info?.availability_topic===true||["2026-09-19-info-1","2026-09-19-availability-2"].includes(data.health?.firmware_revision);}
 export function connectionState(data){
+  if(data.availability==='offline')return 'offline';
+  if((requiresAvailability(data)||data.availability!==undefined)&&data.availability!=='online')return 'unknown';
   if(data.state==='offline')return 'offline';
   if(!data.fresh)return 'unknown';
   if(data.state==='online'&&data.info?.clock_ready!==true)return 'initializing';
@@ -32,19 +35,19 @@ export async function discoverRelays(env,connect=MQTTClient.connect){
   let reader;const devices=new Map();let truncated=false;
   try{
     reader=await connect(config.statusUsername,config.statusPassword,{endpoint:brokerEndpoint(config)});
-    await reader.subscribe(['gate/+/state','gate/+/info','gate/+/health']);
+    await reader.subscribe(['gate/+/availability','gate/+/state','gate/+/info','gate/+/health']);
     const deadline=Date.now()+2500;
     for(let count=0;count<900;count++){
       let e;try{e=await reader.wait(e=>e.type===3,Math.max(1,deadline-Date.now()));}catch(error){if(error.code==='MQTT_TIMEOUT')break;throw error;}
-      const match=/^gate\/([a-z0-9][a-z0-9-]{0,62})\/(state|info|health)$/.exec(e.topic);
+      const match=/^gate\/([a-z0-9][a-z0-9-]{0,62})\/(availability|state|info|health)$/.exec(e.topic);
       if(match){const [,id,key]=match;if(!devices.has(id)&&devices.size>=200){truncated=true;break;}const item=devices.get(id)||{};
-        try{item[key]=key==='state'?e.payload:JSON.parse(e.payload);}catch{}devices.set(id,item);
+        try{item[key]=['state','availability'].includes(key)?e.payload:JSON.parse(e.payload);}catch{}devices.set(id,item);
       }
       if(Date.now()>=deadline)break;if(count===899)truncated=true;
     }
     const found=[];
     for(const [id,data] of devices){
-      if(!data.state&&data.info?.protocol!==2)continue;
+      if(!data.state&&!data.availability&&data.info?.protocol!==2)continue;
       data.observedAt=checkedAt;data.fresh=data.info?.protocol===2&&/^[a-f0-9]{32}$/.test(data.info?.boot_id)&&data.health?.boot_id===data.info.boot_id&&Number.isInteger(data.health?.sampled_at)&&data.health.sampled_at*1000>Date.now()-360000&&data.health.sampled_at*1000<=Date.now()+5000;
       found.push(observationStatement(env,id,data,config.savedAt,true));
     }

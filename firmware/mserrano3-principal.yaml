@@ -21,7 +21,10 @@ esphome:
   on_shutdown:
     then:
       - output.turn_off: relay_output
-      - logger.log: "Apagado controlado del firmware; salida del rele desactivada"
+      # logger.log usa DEBUG por defecto; con el logger en INFO se perderia este mensaje.
+      - logger.log:
+          format: "Apagado controlado del firmware; salida del rele desactivada"
+          level: INFO
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -30,19 +33,24 @@ esp32:
     type: esp-idf
 
 logger:
-  level: DEBUG
+  # ESPHome usa DEBUG por defecto, asi que hay que fijar INFO de forma explicita.
+  level: INFO
 
+# Necesario para el text_sensor reset_reason (no controla el nivel de log).
 debug:
   update_interval: 60s
 
+# --- CAMBIO: reset_reason ahora es visible ---
 text_sensor:
   - platform: debug
     reset_reason:
       id: last_reset_reason
-      internal: true
+      name: "Reset Reason"
+
 ota:
   - platform: esphome
     password: !secret ota_password
+
 wifi:
   id: relay_wifi
   ssid: !secret wifi_ssid
@@ -115,26 +123,31 @@ mqtt:
   discover_ip: false
   log_topic:
     topic: gate/${device_name}/log
-    level: DEBUG   # Volver a INFO al terminar el diagnostico
+    level: INFO
     retain: false
   topic_prefix: null
   # ESPHome reinicia tras 15 minutos sin MQTT (valor previo por defecto).
   reboot_timeout: 15min
-  keepalive: 15s
+  keepalive: 60s
   # Evita bloquear el bucle de control al publicar por una conexión lenta.
   idf_send_async: true
+
+  # --- CAMBIO: disponibilidad en topico separado del estado ---
+  # Birth, will y shutdown comparten availability. El estado operativo
+  # se publica por separado en state, incluido initializing si falta la hora.
   birth_message:
-    topic: gate/${device_name}/state
-    payload: initializing
+    topic: gate/${device_name}/availability
+    payload: online
     retain: true
   will_message:
-    topic: gate/${device_name}/state
+    topic: gate/${device_name}/availability
     payload: offline
     retain: true
   shutdown_message:
-    topic: gate/${device_name}/state
+    topic: gate/${device_name}/availability
     payload: offline
     retain: true
+
   on_connect:
     then:
       - script.execute: publish_status
@@ -229,6 +242,9 @@ script:
           condition:
             mqtt.connected:
           then:
+            # Estado operativo; initializing sigue indicando falta de hora valida.
+            # La disponibilidad vive en gate/${device_name}/availability.
+            # Aqui solo publicamos estado operativo real.
             - mqtt.publish:
                 topic: gate/${device_name}/state
                 retain: true
@@ -241,6 +257,7 @@ script:
                 retain: true
                 payload: |-
                   root["protocol"] = 2;
+                  root["availability_topic"] = true;
                   root["boot_id"] = id(boot_id);
                   root["pulse_ms"] = ${relay_pulse_ms};
                   root["cooldown_ms"] = ${relay_cooldown_ms};
@@ -253,7 +270,7 @@ script:
                   root["uptime_s"] = (uint32_t) (millis() / 1000);
                   root["boot_id"] = id(boot_id);
                   root["reset_reason"] = id(last_reset_reason).state;
-                  root["firmware_revision"] = "2026-09-18-diagnostics-1";
+                  root["firmware_revision"] = "2026-09-19-availability-2";
                   root["sampled_at"] = id(clock_utc).now().is_valid() ? id(clock_utc).now().timestamp : 0;
 
   - id: pulse_relay

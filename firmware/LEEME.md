@@ -31,7 +31,8 @@ Todos bajo gate/mserrano3-principal/:
 | log | ESP32 → Backend | No (predeterminado) | Logs de diagnóstico, nivel INFO |
 | cmd | Backend → ESP32 | NO | Orden JSON |
 | ack | ESP32 → Backend | NO | ID, boot_id, status, reason opcional |
-| state | ESP32 → Backend | Sí | initializing, online, opening, cooldown, offline |
+| availability | ESP32 → Backend | Sí | online al conectar; offline por LWT o apagado |
+| state | ESP32 → Backend | Sí | initializing, online, opening, cooldown |
 | info | ESP32 → Backend | Sí | protocol=2, boot_id, pulse_ms, cooldown_ms, clock_ready |
 | health | ESP32 → Backend | Sí | rssi si está disponible, uptime_s, sampled_at, boot_id |
 
@@ -94,7 +95,7 @@ No se ha flasheado el dispositivo ni enviado una orden MQTT real desde esta tare
 
 ## Logs MQTT (18 de septiembre de 2026)
 
-Los logs se publican en `gate/${device_name}/log` con nivel `DEBUG` durante el diagnóstico actual. Al terminar, volver a `INFO`. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
+Los logs se publican en `gate/${device_name}/log` con nivel `INFO`. Para diagnóstico detallado cambiar tanto logger.level como mqtt.log_topic.level a DEBUG temporalmente. `topic_prefix: null` se conserva como una opción independiente de MQTT. Los logs complementan las confirmaciones del protocolo; no confirman la posición física del portón.
 
 ## LED de conexión — XIAO ESP32-C6
 
@@ -114,7 +115,7 @@ Referencia del pin: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/#p
 
 ## Diagnóstico de reinicios
 
-Los logs MQTT usan DEBUG temporalmente, con retain false, en gate/<device_name>/log. En HiveMQ suscribirse a ese topic antes de reproducir el problema. Los logs son en vivo: si el dispositivo pierde Wi-Fi o energía no puede transmitir el final del fallo.
+Los logs MQTT usan INFO, con retain false, en gate/<device_name>/log. En HiveMQ suscribirse a ese topic antes de reproducir el problema. Los logs son en vivo: si el dispositivo pierde Wi-Fi o energía no puede transmitir el final del fallo.
 
 Para investigar reinicios, conectar USB y abrir Logs / Web Serial en ESPHome; guardar las líneas anteriores al reinicio y el arranque siguiente. Abrir una sesión serial también puede provocar un reinicio, que debe distinguirse de uno espontáneo.
 
@@ -125,3 +126,13 @@ Power-on indica un encendido; brownout señala una caída de tensión detectada;
 El LED fijo solo confirma Wi-Fi, sesión MQTT y reloj local; no verifica la conexión del Worker, sus credenciales, permisos, datos retenidos recientes o bloqueos por revisión. Si Comprobar conexión falla, guardar su mensaje exacto y los topics /info, /state y /health del mismo dispositivo. El Worker espera datos hasta 6 segundos y exige salud de hasta 6 minutos de antigüedad.
 
 Referencia: https://esphome.io/components/debug/
+
+## Disponibilidad separada — 19 de septiembre de 2026
+
+Se incorporó el firmware enviado por el usuario: INFO explícito, motivo de reinicio visible, keepalive de 60 s y birth/will/shutdown en availability. state todavía puede contener initializing si falta hora válida. El comentario anterior que afirmaba lo contrario no describía el código real.
+
+La versión del repositorio availability-2 conserva idf_send_async true para evitar publicaciones bloqueantes y anuncia availability_topic true en info. La plataforma reconoce también la versión enviada info-1 sin ese indicador. El formato de órdenes y confirmaciones sigue siendo protocolo 2.
+
+La detección de pérdida de conexión no es instantánea: con keepalive 60 s puede rondar 90 s desde el último tráfico recibido por el broker. No usar un online retenido como confirmación de movimiento ni de disponibilidad instantánea. No es necesario cambiar los filtros gate/+/# y gate/<device-id>/# existentes.
+
+El panel Comprobar conexión muestra reset_reason, versión y tiempo encendido del último reporte cuando están disponibles; no guarda un historial adicional. No se requiere migración de base de datos para esta actualización.

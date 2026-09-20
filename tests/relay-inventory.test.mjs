@@ -45,3 +45,15 @@ test('Migración de inventario conserva asociación MQTT existente y puede repet
     const migration=readFileSync(new URL('../database/migration_008_relay_inventory.sql',import.meta.url),'utf8');sqlite.exec(migration);sqlite.exec(migration);assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM relay_devices').get().n,1);assert.equal(sqlite.prepare('SELECT name FROM relay_devices').get().name,'Edificio');assert.equal(sqlite.prepare('SELECT trigger_type FROM gates').get().trigger_type,'mqtt');
   }finally{sqlite.close();}
 });
+
+test('Inventario: disponibilidad offline gana al estado online retenido; nueva sin disponibilidad no figura online',async()=>{
+ const s=await setup();try{
+  const boot='c'.repeat(32),events=[];
+  for(const id of ['device-one','device-two']){
+   events.push(event(id,'state','online'),event(id,'info',{protocol:2,boot_id:boot,clock_ready:true,pulse_ms:500,availability_topic:true}),event(id,'health',{boot_id:boot,sampled_at:Math.floor(Date.now()/1000)}));
+  }
+  events.push(event('device-one','availability','offline'));
+  const b=readBroker(events);await discoverRelays(s.env,b.connect);
+  const rows=await listInventory(s.env);assert.equal(rows.find(r=>r.device_id==='device-one').connection_state,'offline');assert.equal(rows.find(r=>r.device_id==='device-two').connection_state,'unknown');assert.equal(b.published,0);
+ }finally{s.sqlite.close();}
+});

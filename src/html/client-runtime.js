@@ -148,7 +148,7 @@ export function clientApp(config){
       if(c.lock)f.append(el('p',c.lock==='cooldown'?'Espera unos segundos entre órdenes.':'Hay una orden pendiente de confirmación o revisión para este relé.'));
       f.append(el('p',c.ready?'Dispositivo conectado y listo para recibir una orden.':'El dispositivo no está listo para recibir órdenes.'),connectionBadge(c.connectionState,c.observedAt),
         el('p','Relé: '+c.deviceId),el('p','Consulta: '+date(c.observedAt)),el('p','Último reporte de salud: '+(c.health?.sampled_at?date(c.health.sampled_at*1000):'No disponible')),
-        el('p','Pulso configurado: '+(c.info?.pulse_ms??'—')+' ms'),el('p','Señal WiFi: '+(c.health?.rssi??'—')+' dBm'),el('p','Esta consulta no acciona el relé. La conexión no indica si el portón está abierto o cerrado.','muted'));
+        el('p','Disponibilidad MQTT: '+(c.availability??'Firmware anterior')),el('p','Último motivo de reinicio reportado: '+(c.health?.reset_reason||'No disponible')),el('p','Firmware: '+(c.health?.firmware_revision||'No informado')),el('p','Tiempo encendido al último reporte: '+(Number.isFinite(c.health?.uptime_s)?c.health.uptime_s+' segundos':'No disponible')),el('p','Pulso configurado: '+(c.info?.pulse_ms??'—')+' ms'),el('p','Señal WiFi: '+(c.health?.rssi??'—')+' dBm'),el('p','Esta consulta no acciona el relé. La conexión no indica si el portón está abierto o cerrado.','muted'));
     },async()=>{},'Cerrar');
   }
   async function connection(tenant,gate){

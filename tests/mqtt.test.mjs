@@ -15,12 +15,13 @@ async function setup(){
   await saveRelayCredentials(env,{commandUsername:'backend-api',commandPassword:'secret-write',statusUsername:'backend-status',statusPassword:'secret-read'},actor);
   return {sqlite,env,gate:await db.getGate(env,'t','g')};
 }
-function broker({acks=['completed'],state='online',fresh=true,bootId=boot,failPublish=false,hold=false}={}){
-  const events=[{topic:'gate/test-relay/state',payload:state},{topic:'gate/test-relay/info',payload:JSON.stringify({protocol:2,boot_id:boot,pulse_ms:500,cooldown_ms:6000,clock_ready:true})},{topic:'gate/test-relay/health',payload:JSON.stringify({boot_id:boot,sampled_at:Math.floor(Date.now()/1000)-(fresh?0:600),rssi:-71})}].map(e=>({...e,type:3,retained:true}));
+function broker({acks=['completed'],state='online',fresh=true,bootId=boot,failPublish=false,hold=false,availability,revision}={}){
+  const events=[{topic:'gate/test-relay/state',payload:state},{topic:'gate/test-relay/info',payload:JSON.stringify({protocol:2,boot_id:boot,pulse_ms:500,cooldown_ms:6000,clock_ready:true})},{topic:'gate/test-relay/health',payload:JSON.stringify({boot_id:boot,sampled_at:Math.floor(Date.now()/1000)-(fresh?0:600),rssi:-71,firmware_revision:revision})}].map(e=>({...e,type:3,retained:true}));
+  if(availability!==undefined)events.push({type:3,topic:'gate/test-relay/availability',payload:availability,retained:true});
   let subscribed=false,pending,release;const sent=[],clients=[];
   const connect=async(user,password)=>{assert.match(password,/^secret-/);const client={
     async subscribe(topics){assert.equal(user,'backend-status');assert.ok(topics.includes('gate/test-relay/info'));subscribed=true;if(hold)await new Promise(r=>release=r);},
-    async wait(matches){let i=events.findIndex(matches);if(i>=0)return events.splice(i,1)[0];throw Error('simulated ack timeout');},
+    async wait(matches){let i=events.findIndex(matches);if(i>=0)return events.splice(i,1)[0];throw Object.assign(Error('simulated ack timeout'),{code:'MQTT_TIMEOUT'});},
     publish(topic,payload){assert.ok(subscribed);assert.equal(user,'backend-api');const c=JSON.parse(payload);sent.push(c);assert.equal(topic,'gate/test-relay/cmd');assert.match(c.id,/^[a-f0-9-]{36}$/);assert.equal(c.expires_at-c.issued_at,10);assert.equal(c.boot_id,boot);if(failPublish)throw Error('socket error');for(const status of acks){events.push({type:3,topic:'gate/test-relay/ack',retained:false,payload:JSON.stringify({id:c.id,boot_id:bootId,protocol:2,status,...(status==='duplicate'?{reason:'completed'}:{})})});}},
     close(){client.closed=true;}
   };clients.push(client);return client;};
@@ -100,4 +101,15 @@ test('MQTT wire: timeout, denied subscription and malformed packets fail without
   const ws=new Socket(),client=new MQTTClient(ws);await assert.rejects(client.wait(e=>false,2));
   ws.send=function(data){this.sent.push(data);if(data[0]===0x82)this.deliver(packet(0x90,[0,1,128]));};await assert.rejects(client.subscribe(['gate/test/state']));
   ws.deliver(packet(0x30,[0,99,1]));await assert.rejects(client.wait(e=>true));client.close();assert.equal(ws.closed,true);
+});
+
+for(const availability of ['online','offline',undefined,'invalid'])test('MQTT nueva disponibilidad: '+availability,async()=>{
+ const s=await setup(),b=broker({availability,revision:'2026-09-19-info-1'});
+ try{
+  if(availability===undefined){await assert.rejects(relayStatus(s.env,s.gate,b.connect),/disponibilidad/);}
+  else {const r=await relayStatus(s.env,s.gate,b.connect);assert.equal(r.ready,availability==='online');assert.equal(r.connectionState,availability==='offline'?'offline':availability==='online'?'online':'unknown');}
+  const opener=broker({availability,revision:'2026-09-19-info-1'});
+  if(availability==='online'){await relayOpen(s.env,s.gate,'new-fw',opener.connect);assert.equal(opener.sent.length,1);}
+  else {await assert.rejects(relayOpen(s.env,s.gate,'new-fw',opener.connect),e=>!e.uncertain);assert.equal(opener.sent.length,0);}
+ }finally{s.sqlite.close();}
 });

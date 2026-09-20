@@ -23,7 +23,7 @@ Broker de esta instalación: `95cad9bec61b432488ee5d0d0ef98773.s1.eu.hivemq.clou
 Servidor, puerto y ruta se pueden cambiar desde Configuración. Solo se admite WebSocket seguro con TLS y un nombre público de servidor. El puerto WebSocket puede ser distinto del TCP que usa el firmware. Cambiar proveedor en la plataforma no reconfigura los ESP32: también hay que actualizar su conexión. Al guardar ajustes se invalidan los estados anteriores; las respuestas tardías de la configuración anterior no los sobrescriben.
 
 - Cuenta de envío: publicar en `gate/+/cmd`.
-- Cuenta de consulta: suscribirse a `gate/+/#` (incluye `state`, `info`, `health` y `ack`).
+- Cuenta de consulta: suscribirse a `gate/+/#` (incluye `availability`, `state`, `info`, `health` y `ack`).
 - Cuenta de cada ESP32: publicar/suscribirse solamente en `gate/<device-id>/#`.
 
 El Worker usa MQTT 3.1.1 sobre el WebSocket del runtime, conexiones cortas, client IDs únicos y clean session. No requiere paquetes Node ni una conexión persistente.
@@ -53,3 +53,9 @@ Los fallos seguros anteriores al envío y rechazos explícitos no consumen el c�
 60 pruebas automatizadas cubren los flujos existentes, credenciales cifradas y acceso restringido, simultaneidad, expiración, fallo de persistencia, confirmaciones incorrectas, consulta sin publicación, formato MQTT, servidor editable, descubrimiento e inventario. El navegador verifica Configuración lateral, formularios, inventario móvil, asignación exclusiva y estado Desconectado conservado al actualizar la página sin deshabilitar el acceso, además de los flujos anteriores.
 
 Las pruebas automatizadas utilizan un broker simulado y no accionan hardware. En la verificación final de producción ya había credenciales guardadas desde la plataforma y una orden real registrada en `cooldown`: este resultado requiere confirmación de pulso completado del dispositivo. Esto verifica el intercambio de la orden y su confirmación; no prueba el movimiento físico del portón. No se enviaron comandos de apertura desde las herramientas de verificación de esta entrega.
+
+## Actualización availability (2026-09-19)
+
+Consulta, apertura e inventario leen availability además del estado operativo. offline de disponibilidad prevalece sobre un state online retenido. Los firmwares que anuncian info.availability_topic=true o health.firmware_revision=2026-09-19-info-1 / 2026-09-19-availability-2 requieren availability online antes de abrir. Sin el mensaje no se envía una orden. Se conserva compatibilidad con el firmware anterior que publicaba su LWT en state.
+
+Comprobar conexión muestra el diagnóstico del último reporte, sin accionar el relé. Los datos de una consulta offline pueden ser parciales. No se añadieron tablas ni se modificaron credenciales, asignaciones o revisiones pendientes.
