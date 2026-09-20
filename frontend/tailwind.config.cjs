@@ -1,0 +1,1 @@
+module.exports={content:['./templates/*.html','./src/*.js'],theme:{extend:{colors:{material:{bg:'#f0f2f5',dark:'#344767',darker:'#2a3a52',text:'#7b809a',border:'#e9ecef'}},fontFamily:{sans:['Roboto','system-ui','sans-serif'],mono:['Roboto Mono','ui-monospace','monospace']}}},plugins:[]};

@@ -1,3 +1,6 @@
+import {createPass,listPasses,extendPass,visitorGates} from './lib/passes.js';
+import {panelData} from './lib/panel.js';
+import {relayStatus} from './lib/relay.js';
 import {relayOpen,RelayError} from './lib/relay.js';
 import * as operations from './lib/operations.js';
 import * as db from './lib/db.js';
@@ -77,8 +80,12 @@ async function route(request,env,ctx) {
     const b=await jsonBody(request);
     if(!/^\d{6}$/.test(b.code||''))throw new InputError('El código debe tener seis dígitos');
     const candidate=await env.DB.prepare("SELECT visit_mode,visit_started_at FROM codes WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)").bind(tenant.id,b.code,Date.now()).first();
+
+    const gates=await visitorGates(env,tenant.id,b.code);
+    if(gates.length>1&&!b.gateId)return json({ok:true,selectionRequired:true,gates,message:'Selecciona el acceso que quieres abrir.'});
+    if(b.gateId&&!gates.some(g=>g.id===b.gateId))return json({ok:false,error:'Este pase no autoriza ese acceso'},403);
     if(candidate?.visit_mode&&!candidate.visit_started_at&&b.confirmVisit!==true)return json({ok:true,confirmationRequired:true,message:'¿Estás frente al portón? Al abrir por primera vez tendrás 10 minutos para volver a abrir. Después, el código dejará de funcionar.'});
-    const row=await db.claimCode(env,tenant.id,b.code);
+    const row=await db.claimCode(env,tenant.id,b.code,b.gateId||null);
     if(!row)return json({ok:false,error:(await db.visitorStatus(env,tenant.id,b.code)).message},403);
     const gate=await db.getGate(env,tenant.id,row.gate_id);
     let outcome='sent',reason='';
@@ -94,7 +101,12 @@ async function route(request,env,ctx) {
     if(rest==='/admin'&&request.method==='GET')return Response.redirect(url.origin+'/t/'+tenant.slug,302);
     return json({ok:false,error:'Tu sesión terminó. Vuelve a iniciar sesión.'},401);
   }
-  if(rest==='/admin'&&request.method==='GET')return html(getAdminHTML(tenant,user));
+  if(rest==='/admin'&&request.method==='GET')return html(getAdminHTML(tenant,user,url.searchParams.get('view')));
+  if(rest==='/admin/panel'&&request.method==='GET')return json({ok:true,...await panelData(env,user,url.searchParams.get('offset'))});
+  if(rest==='/admin/passes'&&request.method==='GET')return json({ok:true,passes:await listPasses(env,user,Object.fromEntries(url.searchParams))});
+  if(rest==='/admin/passes'&&request.method==='POST')return json({ok:true,...await createPass(env,user,await jsonBody(request))});
+  if(rest==='/admin/passes/extend'&&request.method==='POST'){await extendPass(env,user,await jsonBody(request));return json({ok:true});}
+  if(rest==='/admin/connection'&&request.method==='POST'){if(user.role!=='master')return json({ok:false,error:'Solo administración puede consultar dispositivos'},403);if(!await takeAttempt(env,'connection:'+user.tenant_id,6))return json({ok:false,error:'Espera cinco minutos antes de consultar de nuevo'},429);const gate=await db.requireGate(env,user,(await jsonBody(request)).gateId);if(gate.trigger_type!=='mqtt')return json({ok:true,connection:null});return json({ok:true,connection:await relayStatus(env,gate)});}
   if(rest==='/admin/dashboard'&&request.method==='GET')return json({ok:true,...await db.dashboard(env,user)});
   if(rest==='/admin/logout'&&request.method==='POST'){
     await env.DB.prepare('UPDATE users SET session_version=session_version+1 WHERE tenant_id=? AND id=?').bind(tenant.id,user.id).run();
@@ -139,7 +151,7 @@ export default {
     try{res=await route(request,env,ctx);}catch(err){res=json({ok:false,error:err instanceof InputError?err.message:'No se pudo completar la operación. Actualiza la lista antes de reintentar.'},err instanceof InputError?400:500);}
     const headers=new Headers(res.headers);
     headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');headers.set('X-Frame-Options','DENY');
-    headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
     return new Response(res.body,{status:res.status,headers});
   },
   async scheduled(event,env,ctx){ctx.waitUntil(db.cleanup(env));}

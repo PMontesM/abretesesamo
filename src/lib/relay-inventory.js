@@ -28,7 +28,8 @@ export function observationStatement(env,id,data,savedAt,discover=false){
   if(discover)return env.DB.prepare("INSERT INTO relay_devices(device_id,name,connection_state,checked_at,sampled_at,rssi,pulse_ms,created_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM relay_settings WHERE id='credentials' AND updated_at=?) ON CONFLICT(device_id) DO UPDATE SET connection_state=excluded.connection_state,checked_at=excluded.checked_at,sampled_at=excluded.sampled_at,rssi=excluded.rssi,pulse_ms=excluded.pulse_ms WHERE relay_devices.checked_at IS NULL OR relay_devices.checked_at<=excluded.checked_at").bind(id,id,state,at,sample,rssi,pulse,Date.now(),savedAt);
   return env.DB.prepare("UPDATE relay_devices SET connection_state=?,checked_at=?,sampled_at=?,rssi=?,pulse_ms=? WHERE device_id=? AND (checked_at IS NULL OR checked_at<=?) AND EXISTS(SELECT 1 FROM relay_settings WHERE id='credentials' AND updated_at=?)").bind(state,at,sample,rssi,pulse,id,at,savedAt);
 }
-export async function recordObservation(env,id,data,savedAt){if(savedAt)await observationStatement(env,id,data,savedAt).run();}
+export function historyStatement(env,id,data){const at=data.observedAt||Date.now();return env.DB.prepare("INSERT INTO relay_observations(device_id,hour,checked_at,state,rssi,uptime_s) SELECT device_id,?,checked_at,connection_state,rssi,? FROM relay_devices WHERE device_id=? AND checked_at=? ON CONFLICT(device_id,hour) DO UPDATE SET checked_at=excluded.checked_at,state=excluded.state,rssi=excluded.rssi,uptime_s=excluded.uptime_s WHERE relay_observations.checked_at<=excluded.checked_at").bind(Math.floor(at/3600000)*3600000,Number.isSafeInteger(data.health?.uptime_s)?data.health.uptime_s:null,id,at);}
+export async function recordObservation(env,id,data,savedAt){if(savedAt){data.observedAt=data.observedAt||Date.now();await env.DB.batch([observationStatement(env,id,data,savedAt),historyStatement(env,id,data)]);}}
 export async function discoverRelays(env,connect=MQTTClient.connect){
   const checkedAt=Date.now();
   const config=await loadRelayCredentials(env);if(!config)throw new InputError('Guarda primero la conexión MQTT en Configuración');
@@ -49,10 +50,10 @@ export async function discoverRelays(env,connect=MQTTClient.connect){
     for(const [id,data] of devices){
       if(!data.state&&!data.availability&&data.info?.protocol!==2)continue;
       data.observedAt=checkedAt;data.fresh=data.info?.protocol===2&&/^[a-f0-9]{32}$/.test(data.info?.boot_id)&&data.health?.boot_id===data.info.boot_id&&Number.isInteger(data.health?.sampled_at)&&data.health.sampled_at*1000>Date.now()-360000&&data.health.sampled_at*1000<=Date.now()+5000;
-      found.push(observationStatement(env,id,data,config.savedAt,true));
+      found.push(observationStatement(env,id,data,config.savedAt,true),historyStatement(env,id,data));
     }
     for(let i=0;i<found.length;i+=40)await env.DB.batch(found.slice(i,i+40));
-    return {found:found.length,truncated};
+    return {found:found.length/2,truncated};
   }catch(error){if(error instanceof InputError)throw error;throw new InputError('No se pudo buscar relés. Revisa el servidor y que la cuenta de consulta pueda leer gate/+/#');}
   finally{reader?.close();}
 }

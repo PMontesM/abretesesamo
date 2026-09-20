@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {mkdirSync,readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {makeDB} from './db.mjs';
+import * as db from '../src/lib/db.js';
+import {createPass} from '../src/lib/passes.js';
+import {hashSecret} from '../src/lib/security.js';
+const {default:worker}=await import(process.env.WORKER_BUNDLE?pathToFileURL(resolve(process.env.WORKER_BUNDLE)).href:new URL('../src/index.js',import.meta.url).href);
+const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_PATH||'playwright');
+const {sqlite,db:DB}=makeDB(),env={DB,ADMIN_SIGNING_SECRET:'test-only-signing-key-with-at-least-32-chars'};
+const tenantId=await db.createTenant(env,{slug:'aurora',name:'Residencial Aurora',gateName:'Portón principal',triggerUrl:'https://device.test/main',masterUsername:'admin',masterSecret:'password-test'});
+const gate=sqlite.prepare('SELECT * FROM gates').get();
+const parking=await db.saveGate(env,tenantId,{name:'Estacionamiento',triggerUrl:'https://device.test/parking'});
+await db.createUser(env,tenantId,{username:'pablo',secret:'password-test',gateIds:[gate.id,parking]});
+const user=sqlite.prepare("SELECT * FROM users WHERE username='pablo'").get();
+await db.createCode(env,user,{gateId:gate.id,label:'Visita de María',expiresAt:Date.now()+2*3600000,singleUse:false,visit:true});
+await db.createCode(env,user,{gateId:parking,label:'Entrega de supermercado',expiresAt:Date.now()+30*60000,singleUse:false});
+const secret=await hashSecret('password-test');sqlite.prepare('INSERT INTO platform_admins(id,username,secret,created_at) VALUES(?,?,?,?)').run('platform','platform',secret,1);
+for(let i=0;i<30;i++)sqlite.prepare('INSERT INTO logs(id,tenant_id,gate_id,gate_name,owner_id,owner,label,outcome,at) VALUES(?,?,?,?,?,?,?,?,?)').run(crypto.randomUUID(),tenantId,gate.id,gate.name,user.id,user.username,i===0?'=HYPERLINK("test")':'Visita',i%7===0?'not_sent':'sent',Date.now()-i*2300000);
+let commands=[];globalThis.fetch=async url=>{commands.push(String(url));return new Response('ok');};
+const browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{})});
+const output=resolve('work/portonsmart-preview');mkdirSync(output,{recursive:true});
+try{
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ await context.route('https://app.test/**',async route=>{const r=route.request(),url=new URL(r.url());if(url.pathname.startsWith('/assets/')){const file=new URL('../frontend/dist'+url.pathname,import.meta.url);const type=String(file).endsWith('.css')?'text/css':String(file).endsWith('.js')?'text/javascript':String(file).endsWith('.woff2')?'font/woff2':'application/octet-stream';await route.fulfill({status:200,contentType:type,body:readFileSync(file)});return;}const response=await worker.fetch(new Request(r.url(),{method:r.method(),headers:r.headers(),...(r.postData()?{body:r.postData()}:{})}),env,{waitUntil:p=>p});await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});});
+ const page=await context.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR',e.message);});page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE',m.text());});page.on('dialog',d=>d.accept());
+ async function login(username){await page.goto('https://app.test/t/aurora?access=resident');await page.getByLabel('Usuario',{exact:true}).fill(username);await page.getByLabel('Contraseña',{exact:true}).fill('password-test');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.waitForURL('**/admin');await page.waitForFunction(()=>window.Alpine&&!window.Alpine.$data(document.body).loading);}
+ const shot=async name=>page.screenshot({path:resolve(output,name+'.png'),animations:'disabled'});
+ await login('admin');assert.equal(commands.length,0);await shot('alpine-admin');
+ assert.equal(await page.locator('#dispositivos article').count(),2);
+ await page.getByRole('link',{name:'Residentes',exact:true}).click();await page.getByRole('heading',{name:'Usuarios de Residencial Aurora'}).waitFor();
+ await login('pablo');await shot('alpine-resident');assert.equal(await page.locator('#pases article').count(),2);
+ const first=page.locator('#accesos article').first(),hold=first.locator('button.hold');await hold.hover();await page.mouse.down();await page.waitForTimeout(100);await page.mouse.up();await page.waitForTimeout(650);assert.equal(commands.length,0);
+ await hold.focus();await page.keyboard.down('Space');await page.waitForTimeout(750);await page.keyboard.up('Space');await page.waitForFunction(()=>window.Alpine.$data(document.body).doors.some(d=>d.state==='abierto'));assert.equal(commands.length,1);
+ await page.getByRole('button',{name:'Nuevo pase',exact:true}).click();await page.getByLabel('Nombre o referencia').fill('Entrega multipuerta');await page.getByRole('dialog').getByText('Entrega',{exact:true}).click();await page.getByRole('dialog').getByLabel('Portón principal',{exact:true}).check();await page.getByRole('dialog').getByLabel('Estacionamiento',{exact:true}).check();await page.getByRole('button',{name:'Crear pase',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});await page.getByRole('heading',{name:'Entrega multipuerta',exact:true}).waitFor();const created=sqlite.prepare("SELECT * FROM codes WHERE label='Entrega multipuerta'").get();assert.equal(created.category,'Entrega');assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM code_gates WHERE code=?').get(created.code).n,2);
+ await page.setViewportSize({width:390,height:844});await page.locator('main').evaluate(e=>e.scrollTop=0);await shot('alpine-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.goto('https://app.test/t/aurora?code='+created.code);await page.getByRole('button',{name:'Enviar orden de apertura',exact:true}).click();await page.getByRole('dialog').getByLabel('Acceso',{exact:true}).selectOption(parking);await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByText('Orden de apertura enviada a Estacionamiento',{exact:true}).waitFor();assert.equal(commands.at(-1),'https://device.test/parking');assert.equal(commands.length,2);
+ const visit=await createPass(env,user,{label:'Visita multiacceso',mode:'visit',minutes:30,gateIds:[gate.id,parking]});
+ await page.goto('https://app.test/t/aurora?code='+visit.code);await page.getByRole('button',{name:'Enviar orden de apertura',exact:true}).click();await page.getByRole('dialog').getByLabel('Acceso',{exact:true}).selectOption(gate.id);await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByRole('button',{name:'Estoy frente al portón, abrir',exact:true}).waitFor();assert.equal(commands.length,2);await page.getByRole('button',{name:'Estoy frente al portón, abrir',exact:true}).click();await page.getByText('Orden de apertura enviada a Portón principal',{exact:true}).waitFor();assert.equal(commands.length,3);assert.equal(commands.at(-1),'https://device.test/main');await shot('alpine-visitor');
+ assert.deepEqual(errors,[]);console.log('OK Alpine: plantillas originales, residente, panel, permisos, pases multiacceso, confirmación de visita y apertura seleccionada.');
+}finally{await browser.close();}

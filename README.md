@@ -22,10 +22,12 @@ La plataforma se llamaba Ábrete Sésamo. Los enlaces y nombres técnicos existe
 ## Estructura
 
 ```text
-src/                         Servidor e interfaz completos
-  html/client-runtime.js     Código editable de la interfaz
-  html/client.js             Fuente generada para el navegador
-  html/shared.js             Diseño y estructura visual
+src/                         Servidor, rutas y páginas autenticadas
+frontend/templates/          Plantillas del panel y Mi Acceso
+frontend/src/                Alpine CSP, estilos y conexión al servidor
+frontend/legacy/             Usuarios, visitantes y superadministración
+frontend/reference/          Propuestas originales (no se publican)
+frontend/dist/               Archivos estáticos generados (no incluidos en Git)
 database/schema.sql          Único esquema para instalar de cero
 database/verificar.sql       Comprobación sin UNION ALL
 tools/crear-superadmin.mjs    Genera un alta con contraseña aleatoria y hash
@@ -42,7 +44,7 @@ INSTALACION.md               Guía detallada
 
 ## Validación realizada
 
-- 64 pruebas automáticas aprobadas, incluida una instalación vacía completa.
+- 74 pruebas automáticas, incluida una instalación vacía completa.
 - Interfaz probada en navegador con el Worker completo empaquetado y minificado: login, selección, creación y uso de códigos, historial, edición y separación de edificios, menú móvil y contenido hostil.
 - Aperturas probadas con respuestas simuladas; no se enviaron órdenes a dispositivos reales.
 - Para actualizar una instalación existente, sigue ACTUALIZACION-AUDITORIA.md. La integración física debe verificarse en sitio.

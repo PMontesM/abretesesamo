@@ -28,7 +28,9 @@ npm --version
 Usa Node.js 24 o posterior. Tu versión 24.13.0 es compatible. Instala las dependencias del proyecto:
 
 ```cmd
-npm install
+npm ci
+npm run setup:frontend
+npm run build
 ```
 
 El paquete fija Wrangler 4.130.0 y Playwright 1.62.1. A partir de aquí usa **`npx wrangler`** para que los comandos utilicen la versión instalada en esta carpeta, en lugar de depender de una instalación global distinta. Conserva el `package-lock.json` que genere npm.
@@ -74,7 +76,7 @@ database_id = "TU-IDENTIFICADOR-REAL"
 
 No cambies `binding = "DB"`: el servidor lo utiliza con ese nombre. No necesitas crear KV ni configurar Turnstile para esta versión. [Referencia de D1](https://developers.cloudflare.com/d1/get-started/).
 
-## 4. Crear las nueve tablas
+## 4. Crear el esquema completo
 
 Ejecuta una sola vez sobre la base nueva:
 
@@ -298,3 +300,7 @@ Revisa el uso de CPU y D1 de tu plan, especialmente el inicio de sesión con has
 | Fallo HTTP del proveedor | Revisa la URL y método del portón. No publiques las URLs completas: pueden contener tokens. |
 
 No se incluyó un borrado automático de la base. Para empezar de cero, esta guía utiliza una base nueva y mantiene la anterior disponible para recuperación.
+
+## Actualización de la interfaz PortonSmart
+
+En una instalación existente no ejecutes el esquema inicial. Sigue [INTERFAZ-PORTONSMART.md](docs/INTERFAZ-PORTONSMART.md), respalda D1 y aplica la migración 009 una sola vez después de la 008. El despliegue incluye frontend/dist mediante Workers Assets.

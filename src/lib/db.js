@@ -50,7 +50,7 @@ export async function setPermissions(env,tenantId,userId,gateIds,actor=null) {
     env.DB.prepare('DELETE FROM user_gates WHERE tenant_id=? AND user_id=?').bind(tenantId,userId),
     ...gates.map(g=>env.DB.prepare('INSERT INTO user_gates(tenant_id,user_id,gate_id) VALUES(?,?,?)').bind(tenantId,userId,g)),
     env.DB.prepare(`UPDATE codes SET status='revoked' WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain')
-      AND gate_id NOT IN (SELECT gate_id FROM user_gates WHERE user_id=? AND tenant_id=?)`).bind(tenantId,userId,userId,tenantId),
+      AND (gate_id NOT IN (SELECT gate_id FROM user_gates WHERE user_id=? AND tenant_id=?) OR EXISTS(SELECT 1 FROM code_gates cg WHERE cg.tenant_id=codes.tenant_id AND cg.code=codes.code AND NOT EXISTS(SELECT 1 FROM user_gates p WHERE p.user_id=codes.owner_id AND p.gate_id=cg.gate_id)))`).bind(tenantId,userId,userId,tenantId),
     ...auditStatements(env,actor,'set_permissions',{tenantId,userId,gateIds:gates})
   ]);
 }
@@ -112,7 +112,7 @@ export async function saveGate(env,tenantId,body,actor=null) {
   // Never move a device while an unresolved command can still affect it.
   if(old&&(old.trigger_type!==type||old.trigger_config!==config)&&await env.DB.prepare("SELECT id FROM relay_commands WHERE gate_id=? AND (status IN ('pending','uncertain') OR (status='cooldown' AND release_at>?))").bind(id,Date.now()).first())throw new InputError('Resuelve primero la orden pendiente del relé');
   if(old)await env.DB.batch([
-    env.DB.prepare("UPDATE codes SET status='revoked' WHERE tenant_id=? AND gate_id=? AND status IN ('active','pending','uncertain') AND (?='inactive' OR EXISTS(SELECT 1 FROM gates WHERE id=? AND (trigger_type!=? OR trigger_config!=?)))").bind(tenantId,id,status,id,type,config),
+    env.DB.prepare("UPDATE codes SET status='revoked' WHERE tenant_id=? AND (gate_id=? OR EXISTS(SELECT 1 FROM code_gates cg WHERE cg.tenant_id=codes.tenant_id AND cg.code=codes.code AND cg.gate_id=?)) AND status IN ('active','pending','uncertain') AND (?='inactive' OR EXISTS(SELECT 1 FROM gates WHERE id=? AND (trigger_type!=? OR trigger_config!=?)))").bind(tenantId,id,id,status,id,type,config),
     env.DB.prepare('UPDATE gates SET name=?,trigger_type=?,trigger_config=?,status=? WHERE tenant_id=? AND id=?').bind(name,type,config,status,tenantId,id),
     ...auditStatements(env,actor,'save_gate',{tenantId,gateId:id,name,status,triggerType:type})
   ]);
@@ -144,7 +144,7 @@ export async function listCodes(env,tenantId,user=null,options={}) {
   const page=Number(options.page||0);if(!Number.isSafeInteger(page)||page<0||page>100000)throw new InputError('Página inválida');
   const search=String(options.search||'').trim();if(search.length>64)throw new InputError('Búsqueda inválida');
   const requestedState=String(options.status||'');const state=requestedState==='current'?'':requestedState;if(state&&!['active','pending','uncertain','revoked','expired','used'].includes(state))throw new InputError('Estado inválido');
-  return rows(env.DB.prepare("SELECT c.*,g.name AS gate_name,g.status AS gate_status FROM codes c LEFT JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id WHERE c.tenant_id=? AND (? IS NULL OR c.owner_id=?) AND (?='' OR c.code=?) AND (?='' OR c.status=?) AND (?=0 OR (c.status IN ('pending','uncertain') OR (c.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)))) ORDER BY c.created_at DESC,c.code DESC LIMIT 100 OFFSET ?").bind(tenantId,owner,owner,search,search,state,state,requestedState==='current'?1:0,Date.now(),page*100));
+  return rows(env.DB.prepare("SELECT c.*,COALESCE((SELECT GROUP_CONCAT(linked.name, ' / ') FROM code_gates cg JOIN gates linked ON linked.id=cg.gate_id AND linked.tenant_id=cg.tenant_id WHERE cg.tenant_id=c.tenant_id AND cg.code=c.code),g.name) AS gate_name,g.status AS gate_status FROM codes c LEFT JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id WHERE c.tenant_id=? AND (? IS NULL OR c.owner_id=?) AND (?='' OR c.code=?) AND (?='' OR c.status=?) AND (?=0 OR (c.status IN ('pending','uncertain') OR (c.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)))) ORDER BY c.created_at DESC,c.code DESC LIMIT 100 OFFSET ?").bind(tenantId,owner,owner,search,search,state,state,requestedState==='current'?1:0,Date.now(),page*100));
 }
 export async function revokeCode(env,tenantId,code,user=null,actor=null) {
   const owner=user&&user.role!=='master'?user.id:null;
@@ -152,14 +152,15 @@ export async function revokeCode(env,tenantId,code,user=null,actor=null) {
   if(!r[0].meta.changes)throw new InputError('Código no disponible para revocar');
 }
 // Claim and all authorization predicates are one atomic statement. No read/delete race.
-export async function claimCode(env,tenantId,code) {
-  return env.DB.prepare(`UPDATE codes SET status='pending',claim_token=?,claimed_at=?
-    WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)
-    AND EXISTS(SELECT 1 FROM tenants t WHERE t.id=codes.tenant_id AND t.status='active')
-    AND EXISTS(SELECT 1 FROM gates g WHERE g.id=codes.gate_id AND g.tenant_id=codes.tenant_id AND g.status='active')
-    AND EXISTS(SELECT 1 FROM users u WHERE u.id=codes.owner_id AND u.tenant_id=codes.tenant_id
-      AND (u.role='master' OR EXISTS(SELECT 1 FROM user_gates p WHERE p.user_id=u.id AND p.tenant_id=codes.tenant_id AND p.gate_id=codes.gate_id)))
-    RETURNING *, (SELECT trigger_config FROM gates WHERE id=codes.gate_id) AS authorized_config`).bind(crypto.randomUUID(),Date.now(),tenantId,code,Date.now()).first();
+export async function claimCode(env,tenantId,code,selected=null) {
+ const row=await env.DB.prepare(`UPDATE codes SET status='pending',claim_token=?,claimed_at=?
+ WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)
+ AND EXISTS(SELECT 1 FROM tenants t WHERE t.id=codes.tenant_id AND t.status='active')
+ AND EXISTS(SELECT 1 FROM gates g WHERE g.id=COALESCE(?,codes.gate_id) AND g.tenant_id=codes.tenant_id AND g.status='active'
+ AND ((g.id=codes.gate_id AND NOT EXISTS(SELECT 1 FROM code_gates cg WHERE cg.tenant_id=codes.tenant_id AND cg.code=codes.code)) OR EXISTS(SELECT 1 FROM code_gates cg WHERE cg.tenant_id=codes.tenant_id AND cg.code=codes.code AND cg.gate_id=g.id AND cg.authorized_config=g.trigger_config)))
+ AND EXISTS(SELECT 1 FROM users u WHERE u.id=codes.owner_id AND u.tenant_id=codes.tenant_id AND (u.role='master' OR EXISTS(SELECT 1 FROM user_gates p WHERE p.user_id=u.id AND p.tenant_id=codes.tenant_id AND p.gate_id=COALESCE(?,codes.gate_id))))
+ RETURNING *, COALESCE(?,gate_id) AS selected_gate_id,(SELECT trigger_config FROM gates WHERE id=COALESCE(?,codes.gate_id)) AS authorized_config`).bind(crypto.randomUUID(),Date.now(),tenantId,code,Date.now(),selected,selected,selected,selected).first();
+ return row?{...row,gate_id:row.selected_gate_id}:null;
 }
 export async function finishCode(env,row,gate,outcome) {
   const status=outcome==='sent'?(row.single_use?'used':'active'):outcome==='not_sent'?'active':'uncertain';
@@ -211,6 +212,7 @@ export const audit=(env,admin,action,details)=>env.DB.prepare('INSERT INTO platf
 export const listAudit=env=>rows(env.DB.prepare('SELECT * FROM platform_audit_log ORDER BY at DESC LIMIT 200'));
 export async function cleanup(env) {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM relay_observations WHERE hour<?').bind(Date.now()-48*3600000),
     env.DB.prepare("UPDATE relay_commands SET status='uncertain' WHERE status='pending' AND created_at<?").bind(Date.now()-120000),
     env.DB.prepare("UPDATE relay_commands SET status='completed' WHERE status='cooldown' AND release_at<=?").bind(Date.now()),
     env.DB.prepare("DELETE FROM relay_commands WHERE status IN ('completed','not_sent','closed') AND created_at<?").bind(Date.now()-30*86400000),

@@ -1,0 +1,338 @@
+<body class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+      x-data="admin" @keydown.escape.window="drawer = false">
+
+  <!-- SIDEBAR -->
+  <aside :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+         class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+         aria-label="Menú principal">
+    <div class="h-20 flex items-center px-6 border-b border-material-border">
+      <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white shadow-floating"><i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i></div>
+      <span class="ml-3 text-material-dark text-sm font-bold tracking-wider">PORTONSMART</span>
+    </div>
+    <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin">
+      <p class="px-3 text-xs font-medium text-material-text mb-2">Operación</p>
+      <a href="#" @click.prevent="drawer = false" aria-current="page" class="flex items-center px-3 py-3 bg-material-dark text-white shadow-floating font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span><span class="ml-2">Dashboard</span></a>
+      <a href="#dispositivos" @click="drawer = false" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-microchip" aria-hidden="true"></i></span><span class="ml-2">Dispositivos</span>
+        <span x-show="alerts.length" x-cloak class="ml-auto w-5 h-5 bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center" x-text="alerts.length"></span></a>
+      <a href="#bitacora" @click="drawer = false" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></span><span class="ml-2">Bitácora</span></a>
+
+      <p class="px-3 text-xs font-medium text-material-text mt-6 mb-2">Gestión</p>
+      <a :href="usersUrl" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-users" aria-hidden="true"></i></span><span class="ml-2">Residentes</span></a>
+      <a :href="legacyUrl" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-key" aria-hidden="true"></i></span><span class="ml-2">Códigos y pases</span></a>
+
+      <p class="px-3 text-xs font-medium text-material-text mt-6 mb-2">Sistema</p>
+      <a :href="usersUrl" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Configuración</span></a>
+    </nav>
+    <div class="p-4 border-t border-material-border">
+      <div class="bg-gray-50 p-3 flex items-center gap-3">
+        <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white text-xs font-bold" aria-hidden="true" x-text="initials"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-material-dark truncate"><span x-text="user.username"></span></p>
+          <p class="text-xs text-material-text truncate">Administrador</p>
+        </div>
+        <button class="text-material-text hover:text-material-dark" @click="logout()" aria-label="Cerrar sesión"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+      </div>
+    </div>
+  </aside>
+  <div x-show="drawer" x-cloak @click="drawer = false" class="fixed inset-0 bg-black/30 z-30 md:hidden" x-transition.opacity></div>
+
+  <div x-show="error" x-cloak role="alert" class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-red-50 border border-red-200 text-red-800 p-4 shadow-floating max-w-[90vw]"><span x-text="error"></span><button @click="error = ''" class="ml-4 underline">Cerrar</button></div>
+<!-- MAIN -->
+  <main id="main-scroll" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin">
+    <header class="py-4 px-5 md:px-8 flex justify-between items-center sticky top-0 z-20 bg-material-bg/85 backdrop-blur-sm">
+      <div>
+        <p class="text-sm text-gray-500"><span x-text="tenant.name"></span></p>
+        <h1 class="font-bold text-material-dark text-xl">Panel de administración</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 px-3 h-10 bg-white shadow-soft" role="status">
+          <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+          <span class="text-xs font-medium text-material-dark" x-text="online + ' de ' + devices.length + ' dispositivos en línea'"></span>
+        </div>
+        <button @click="notifications()" class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" :aria-label="'Notificaciones, ' + alerts.length + ' sin leer'">
+          <i class="fa-regular fa-bell text-sm" aria-hidden="true"></i>
+          <span x-show="alerts.length" x-cloak class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button @click="drawer = true" class="md:hidden w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" aria-label="Abrir menú"><i class="fa-solid fa-bars text-sm"></i></button>
+      </div>
+    </header>
+
+    <div class="px-5 md:px-8 pt-4 pb-10 max-w-7xl mx-auto w-full">
+
+      <!-- ALERTAS -->
+      <section aria-label="Alertas">
+        <template x-for="a in alerts" :key="a.id">
+          <div class="bg-white shadow-soft border-l-4 border-amber-500 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4" role="alert">
+            <div class="w-10 h-10 shrink-0 bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-material-dark" x-text="a.title"></p>
+              <p class="text-sm text-material-text mt-0.5" x-text="a.body"></p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <button @click="focusDevice(a.device)" class="px-3 py-2 text-xs font-semibold text-white bg-material-dark hover:bg-material-darker">Ver actividad</button>
+              <button @click="dismiss(a.id)" class="px-3 py-2 text-xs font-semibold text-material-dark border border-gray-300 hover:bg-gray-50">Descartar</button>
+            </div>
+          </div>
+        </template>
+        <p x-show="alerts.length === 0" x-cloak class="text-sm text-material-text flex items-center gap-2 px-1"><i class="fa-solid fa-circle-check text-emerald-500" aria-hidden="true"></i>Sin alertas activas.</p>
+      </section>
+
+      <!-- KPIs -->
+      <section class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10" aria-label="Resumen del día">
+        <div class="relative bg-white shadow-soft p-4">
+          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-door-open" aria-hidden="true"></i></div>
+          <p class="text-sm text-gray-500">Órdenes enviadas hoy</p>
+          <p class="text-3xl font-bold text-material-dark mt-1" x-text="totalHoy"></p>
+          <hr class="my-3 border-material-border">
+          <p class="text-xs"><span class="font-bold" :class="delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(delta >= 0 ? '+' : '') + delta + '%'"></span> frente a ayer</p>
+        </div>
+
+        <button @click="showRejected()" class="relative bg-white shadow-soft p-4 text-left hover:bg-gray-50 transition-colors">
+          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-ban" aria-hidden="true"></i></div>
+          <p class="text-sm text-gray-500">No confirmadas</p>
+          <p class="text-3xl font-bold text-material-dark mt-1" x-text="attemptsRejected"></p>
+          <hr class="my-3 border-material-border">
+          <p class="text-xs"><span x-text="rejectedPct + '% de los intentos'"></span> · <span class="font-semibold text-material-dark">Ver en bitácora</span></p>
+        </button>
+
+        <div class="relative bg-white shadow-soft p-4">
+          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-key" aria-hidden="true"></i></div>
+          <p class="text-sm text-gray-500">Códigos activos</p>
+          <p class="text-3xl font-bold text-material-dark mt-1" x-text="activeCodes"></p>
+          <hr class="my-3 border-material-border">
+          <p class="text-xs"><span class="font-bold text-amber-600" x-text="expiring.length"></span> vencen hoy</p>
+        </div>
+
+        <div class="relative bg-white shadow-soft p-4">
+          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-clock" aria-hidden="true"></i></div>
+          <p class="text-sm text-gray-500">Última orden enviada</p>
+          <p class="text-3xl font-bold text-material-dark mt-1" x-text="lastText"></p>
+          <hr class="my-3 border-material-border">
+          <p class="text-xs">Respuesta confirmada por la integración</p>
+        </div>
+      </section>
+
+      <!-- DISPOSITIVOS -->
+      <section id="dispositivos" class="mt-14" aria-labelledby="t-disp">
+        <div class="relative bg-white shadow-soft">
+          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
+            <h2 id="t-disp" class="text-white font-bold text-base">Dispositivos</h2>
+            <button @click="refresh()" :disabled="busy" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Actualizar
+            </button>
+          </div>
+
+          <div class="p-5 md:p-6 pt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <template x-for="d in devices" :key="d.id">
+              <article class="border flex flex-col" :class="weak(d) ? 'border-amber-300 bg-amber-50/40' : 'border-material-border'">
+                <div class="p-4 flex-1">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <h3 class="font-mono text-sm font-medium text-material-dark truncate" x-text="d.deviceId"></h3>
+                      <p class="text-xs text-gray-500 mt-0.5" x-text="d.place + ' · ' + d.model"></p>
+                    </div>
+                    <span class="shrink-0 inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold"
+                          :class="stateClass(d)">
+                      <i :class="weak(d) ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-check'" class="text-[10px]" aria-hidden="true"></i>
+                      <span x-text="stateLabel(d)"></span>
+                    </span>
+                  </div>
+
+                  <div class="mt-4 flex items-end gap-3">
+                    <div class="flex items-end gap-[3px] h-5" aria-hidden="true">
+                      <template x-for="n in 4" :key="n">
+                        <span class="w-1.5" :class="n <= bars(d.rssi) ? (weak(d) ? 'bg-amber-500' : 'bg-material-dark') : 'bg-gray-200'" :style="'height:' + (n * 5) + 'px'"></span>
+                      </template>
+                    </div>
+                    <p class="text-sm text-material-dark"><span class="font-mono" x-text="d.rssi === null ? '—' : d.rssi + ' dBm'"></span> <span class="text-gray-500" x-text="'· ' + quality(d.rssi)"></span></p>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">En la última consulta: encendido <span class="font-medium text-material-dark" x-text="d.uptime"></span></p>
+
+                  <div class="mt-4">
+                    <p class="text-xs text-gray-500 mb-1.5">Observaciones · últimas 24 h</p>
+                    <div class="flex gap-[2px]" role="img" :aria-label="'Disponibilidad de ' + d.id + ' en las últimas 24 horas'">
+                      <template x-for="(c, i) in d.cells" :key="i">
+                        <span class="h-5 flex-1" :class="cellClass(c)" :title="cellText(d, i)"></span>
+                      </template>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-gray-400 mt-1"><span>hace 23 h</span><span>ahora</span></div>
+                  </div>
+                </div>
+
+                <div class="border-t border-material-border grid grid-cols-2">
+                  <button @click="confirmOpen(d)" :disabled="d.testing"
+                          class="py-3 text-xs font-semibold flex items-center justify-center gap-2 border-r border-material-border disabled:opacity-60"
+                          :class="armed === 't' + d.id ? 'bg-material-dark text-white' : 'text-material-dark hover:bg-gray-50'">
+                    <i :class="d.testing ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-lock-open'" aria-hidden="true"></i>
+                    <span x-text="d.testing ? 'Enviando…' : (armed === 't' + d.id ? 'Confirmar: abrirá la puerta' : 'Probar apertura')"></span>
+                  </button>
+                  <button x-show="d.hasRelay" @click="check(d)" :disabled="d.testing" class="col-span-2 py-2 text-xs text-material-dark border-b">Comprobar conexión</button><button @click="focusDevice(d.id)" class="py-3 text-xs font-semibold text-material-dark hover:bg-gray-50 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-list" aria-hidden="true"></i>Ver actividad
+                  </button>
+                </div>
+              </article>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRÁFICO + POR VENCER -->
+      <section class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white shadow-soft p-5 md:p-6" aria-labelledby="t-chart">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="t-chart" class="text-material-dark font-bold text-base">Órdenes por hora</h2>
+              <p class="text-xs text-gray-500 mt-1">Hora pico: <span class="font-medium text-material-dark" x-text="hour(peak) + ' (' + hoy[peak] + ' órdenes)'"></span></p>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-gray-500 shrink-0">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-material-dark"></span>Hoy</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 bg-amber-500"></span>Ayer</span>
+            </div>
+          </div>
+
+          <div class="relative h-52 ml-8 mt-8" role="img" :aria-label="'Aperturas por hora. Hora pico ' + hour(peak)">
+            <template x-for="g in chartTicks" :key="g">
+              <div class="absolute left-0 right-0 border-t border-material-border" :style="'bottom:' + (g / chartMax * 100) + '%'">
+                <span class="absolute -left-8 w-6 text-right text-[11px] text-gray-400 translate-y-1/2" x-text="g"></span>
+              </div>
+            </template>
+            <div class="absolute inset-0 flex items-end gap-[3px]">
+              <template x-for="(v, i) in hoy" :key="i">
+                <div class="flex-1 h-full relative flex items-end" tabindex="0"
+                     @mouseenter="hover = i" @mouseleave="hover = null" @focus="hover = i" @blur="hover = null">
+                  <div class="w-full transition-colors" :class="(i === peak || hover === i) ? 'bg-material-dark' : 'bg-[#c9d0dc]'" :style="'height:' + (v / chartMax * 100) + '%'"></div>
+                  <div class="absolute left-0 right-0 h-0.5 bg-amber-500" :style="'bottom:' + (ayer[i] / chartMax * 100) + '%'"></div>
+                  <div x-show="hover === i" x-cloak
+                       class="absolute z-10 bottom-full mb-2 left-1/2 -translate-x-1/2 bg-material-darker text-white text-xs px-2.5 py-1.5 whitespace-nowrap shadow-floating pointer-events-none">
+                    <span class="font-medium" x-text="hour(i)"></span> · <span x-text="v + ' hoy'"></span> · <span class="text-white/70" x-text="ayer[i] + ' ayer'"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div class="ml-8 mt-2 flex gap-[3px]" aria-hidden="true">
+            <template x-for="(v, i) in hoy" :key="i">
+              <div class="flex-1 flex justify-center text-[11px] text-gray-400 font-mono">
+                <span x-show="i % 3 === 0" class="whitespace-nowrap" x-text="hourLabel(i)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="bg-white shadow-soft p-5 md:p-6" aria-labelledby="t-venc">
+          <div class="flex items-center justify-between">
+            <h2 id="t-venc" class="text-material-dark font-bold text-base">Vencen hoy</h2>
+            <a :href="legacyUrl" class="text-xs font-semibold text-material-dark hover:underline">Ver los <span x-text="activeCodes"></span></a>
+          </div>
+          <ul class="mt-4 divide-y divide-material-border">
+            <template x-for="e in expiring" :key="e.id">
+              <li class="py-3 flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-material-dark truncate" x-text="e.name"></p>
+                  <p class="text-xs text-gray-500 truncate" x-text="e.unit + ' · ' + e.kind + ' · vence en ' + e.left"></p>
+                </div>
+                <button @click="confirmRevoke(e)" class="shrink-0 px-2.5 py-1.5 text-xs font-semibold border"
+                        :class="armed === 'v' + e.id ? 'bg-red-600 border-red-600 text-white' : 'border-gray-300 text-red-600 hover:bg-red-50'"
+                        x-text="armed === 'v' + e.id ? '¿Seguro?' : 'Revocar'"></button>
+              </li>
+            </template>
+            <li x-show="expiring.length === 0" x-cloak class="py-8 text-center text-sm text-material-text">No hay códigos por vencer hoy.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- BITÁCORA -->
+      <section id="bitacora" class="mt-14" aria-labelledby="t-bit">
+        <div class="relative bg-white shadow-soft">
+          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
+            <h2 id="t-bit" class="text-white font-bold text-base">Bitácora de accesos</h2>
+            <button @click="exportCsv()" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> Exportar
+            </button>
+          </div>
+
+          <div class="px-5 md:px-6 pt-5 flex flex-col md:flex-row md:items-center gap-3">
+            <div class="flex" role="group" aria-label="Filtrar por resultado">
+              <template x-for="o in [['todos','Todos', log.length],['exito','Éxito', okCount],['rechazados','Rechazados', badCount]]" :key="o[0]">
+                <button @click="result = o[0]; limit = 6" :aria-pressed="result === o[0]"
+                        class="px-3 py-2 text-xs font-medium border -ml-px first:ml-0"
+                        :class="result === o[0] ? 'bg-material-dark text-white border-material-dark relative' : 'border-gray-300 text-material-dark hover:bg-gray-50'">
+                  <span x-text="o[1]"></span> <span class="opacity-70" x-text="o[2]"></span>
+                </button>
+              </template>
+            </div>
+            <label class="sr-only" for="f-dev">Dispositivo</label>
+            <select id="f-dev" x-model="devFilter" class="border border-gray-300 bg-white px-3 py-2 text-xs text-material-dark font-mono">
+              <option value="todos">Todos los dispositivos</option>
+              <template x-for="d in devices" :key="d.id"><option :value="d.id" x-text="d.id"></option></template>
+            </select>
+            <div class="relative md:ml-auto md:w-64">
+              <label class="sr-only" for="f-q">Buscar</label>
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" aria-hidden="true"></i>
+              <input id="f-q" x-model="q" type="search" placeholder="Buscar depto, nombre o método"
+                     class="w-full border border-gray-300 pl-8 pr-3 py-2 text-xs text-material-dark placeholder-gray-400">
+            </div>
+          </div>
+
+          <div class="block w-full overflow-x-auto mt-3">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="border-b border-material-border text-xs text-gray-500">
+                  <th class="px-6 py-3 font-medium">Usuario y método</th>
+                  <th class="px-6 py-3 font-medium hidden md:table-cell">Dispositivo</th>
+                  <th class="px-6 py-3 font-medium">Resultado</th>
+                  <th class="px-6 py-3 font-medium text-right">Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(r, i) in shown" :key="i + r.who + r.ago">
+                  <tr class="border-b border-material-border hover:bg-gray-50/60">
+                    <td class="px-6 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="h-9 w-9 shrink-0 bg-gray-50 flex items-center justify-center text-material-dark"><i :class="'fa-solid ' + r.icon" class="text-sm" aria-hidden="true"></i></div>
+                        <div class="min-w-0">
+                          <p class="text-sm font-medium text-material-dark whitespace-nowrap" x-text="r.who"></p>
+                          <p class="text-xs text-gray-400 whitespace-nowrap" x-text="r.method"></p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-3 hidden md:table-cell font-mono text-xs text-material-dark whitespace-nowrap" x-text="r.dev"></td>
+                    <td class="px-6 py-3">
+                      <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold whitespace-nowrap" :class="r.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                        <i :class="r.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark'" class="text-[10px]" aria-hidden="true"></i><span x-text="r.ok ? 'Orden enviada' : r.reason"></span>
+                      </span>
+                      <p x-show="!r.ok" class="text-xs text-red-600 mt-1 whitespace-nowrap" x-text="r.reason"></p>
+                    </td>
+                    <td class="px-6 py-3 text-right text-xs text-gray-500 whitespace-nowrap" x-text="r.ago"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+            <div x-show="filtered.length === 0" x-cloak class="px-6 py-10 text-center">
+              <p class="text-sm font-medium text-material-dark">No hay accesos con estos filtros</p>
+              <button @click="clearFilters()" class="mt-3 text-xs font-semibold text-white bg-material-dark px-3 py-2">Quitar filtros</button>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 flex items-center justify-between text-xs text-gray-500">
+            <p>Mostrando <span class="font-medium text-material-dark" x-text="shown.length"></span> de <span x-text="filtered.length"></span></p>
+            <button x-show="filtered.length > limit" x-cloak @click="limit += 6" class="font-semibold text-material-dark hover:underline">Cargar más</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="mt-4 text-xs">Los estados se consultan bajo demanda. Gris: sin observación. Las órdenes enviadas no confirman el movimiento físico. Bitácora: últimos 200 registros.</p><p class="mt-8 text-center text-xs text-material-text">PortonSmart · <span x-text="tenant.name"></span> · protocolo v2 · v2026.09</p>
+    </div>
+  </main>
+
+  <div x-show="toastOn" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed z-50 bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">
+    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i><span x-text="toastMsg"></span>
+  </div>
+</body>

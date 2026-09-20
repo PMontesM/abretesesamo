@@ -26,3 +26,7 @@ secrets.yml
 *.pfx
 .esphome/
 __pycache__/
+
+frontend/dist/
+frontend/src/compiled.css
+frontend/legacy/compiled.css

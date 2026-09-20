@@ -5,12 +5,13 @@ import vm from 'node:vm';
 import { clientSource } from '../src/html/client.js';
 import { getPlatformLoginHTML } from '../src/html/platform.js';
 test('fuente del navegador independiente de funciones auxiliares del empaquetador',()=>{
- const source=readFileSync(new URL('../src/html/client-runtime.js',import.meta.url),'utf8').replace(/^\uFEFF/,'').replace('export function clientApp','function clientApp');
+ const source=readFileSync(new URL('../frontend/legacy/client-runtime.js',import.meta.url),'utf8').replace(/^\uFEFF/,'').replace('export function clientApp','function clientApp');
  assert.equal(clientSource,source,'Ejecuta node tools/build-client.mjs después de cambiar client-runtime.js');
  assert.ok(!clientSource.includes('__name('));
  const html=getPlatformLoginHTML();
  const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
- assert.equal(scripts.length,1);
- new vm.Script(scripts[0][1]);
- assert.ok(scripts[0][1].includes(clientSource));
+ assert.equal(scripts.length,0,'No debe haber scripts ejecutables en línea');
+ new vm.Script(clientSource);
+ assert.match(html,/<script defer src="\/assets\/legacy-[^"]+\.js"><\/script>/);
+ assert.equal(JSON.parse(html.match(/id="app-config">([\s\S]*?)<\/script>/)[1]).mode,'platform-login');
 });

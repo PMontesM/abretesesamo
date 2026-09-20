@@ -1,0 +1,310 @@
+<body class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+      x-data="resident" @keydown.escape.window="drawer = false; sheet = false">
+
+  <!-- SIDEBAR / DRAWER -->
+  <aside :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+         class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+         aria-label="Menú principal">
+    <div class="h-20 flex items-center px-6">
+      <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white shadow-floating">
+        <i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i>
+      </div>
+      <span class="ml-3 text-material-dark text-sm font-bold tracking-wider">PORTONSMART</span>
+    </div>
+    <hr class="border-material-border mx-4 mb-4">
+    <nav class="flex-1 px-4 overflow-y-auto scrollbar-thin">
+      <a x-show="user.role === 'master'" :href="dashboardUrl" class="block px-3 py-3 mb-2 text-sm text-material-dark">← Panel de administración</a><p class="px-3 text-xs font-medium text-material-text mb-2">Mi cuenta</p>
+      <a href="#accesos" @click="drawer = false; tab = 'accesos'" class="flex items-center px-3 py-3 bg-material-dark text-white shadow-floating font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span><span class="ml-2">Mis accesos</span>
+      </a>
+      <a href="#pases" @click="drawer = false; tab = 'pases'" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span><span class="ml-2">Pases de visita</span>
+      </a>
+      <a href="#actividad" @click="drawer = false; tab = 'actividad'" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></span><span class="ml-2">Historial</span>
+      </a>
+      <a href="#" @click.prevent="profile()" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-user" aria-hidden="true"></i></span><span class="ml-2">Mi perfil</span>
+      </a>
+      <p class="px-3 text-xs font-medium text-material-text mt-6 mb-2">Ayuda</p>
+      <a href="#" @click.prevent="support()" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span><span class="ml-2">Soporte</span>
+      </a>
+      <a :href="legacyUrl" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
+        <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Todos mis códigos</span>
+      </a>
+    </nav>
+    <div class="p-4 border-t border-material-border">
+      <div class="bg-gray-50 p-3 flex items-center gap-3">
+        <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white text-xs font-bold" aria-hidden="true" x-text="initials"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-material-dark truncate"><span x-text="user.username"></span></p>
+          <p class="text-xs text-material-text truncate"><span x-text="user.role === 'master' ? 'Administración' : 'Residente'"></span></p>
+        </div>
+        <button class="text-material-text hover:text-material-dark" @click="logout()" aria-label="Cerrar sesión"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+      </div>
+    </div>
+  </aside>
+  <div x-show="drawer" x-cloak @click="drawer = false" class="fixed inset-0 bg-black/30 z-30 md:hidden" x-transition.opacity></div>
+
+  <div x-show="error" x-cloak role="alert" class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-red-50 border border-red-200 text-red-800 p-4 shadow-floating max-w-[90vw]"><span x-text="error"></span><button @click="error = ''" class="ml-4 underline">Cerrar</button></div>
+<!-- MAIN -->
+  <main id="main-scroll" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin pb-24 md:pb-8">
+
+    <header class="py-4 px-5 md:px-8 flex justify-between items-center sticky top-0 z-20 bg-material-bg/85 backdrop-blur-sm">
+      <div>
+        <p class="text-sm text-gray-500"><span x-text="tenant.name"></span> · <span x-text="user.role === 'master' ? 'Administración' : 'Residente'"></span></p>
+        <h1 class="font-bold text-material-dark text-xl"><span x-text="'Hola, ' + user.username"></span></h1>
+      </div>
+      <button @dblclick="refresh()" class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" @click="notifications()" aria-label="Notificaciones">
+        <i class="fa-regular fa-bell text-sm" aria-hidden="true"></i>
+        <span x-show="noticeCount > 0" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+      </button>
+    </header>
+
+    <div class="px-5 md:px-8 pt-6 max-w-5xl mx-auto w-full">
+
+      <div class="flex justify-end mb-6"><button @click="refresh()" :disabled="busy" class="text-xs text-material-dark underline">Actualizar datos</button></div>
+<!-- ABRIR -->
+      <section id="accesos" aria-labelledby="t-abrir">
+        <h2 id="t-abrir" class="sr-only">Abrir accesos</h2>
+        <p x-show="!loading && doors.length === 0" class="bg-white p-5 mb-6 text-sm">No tienes accesos asignados. Contacta al administrador.</p><div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
+          <template x-for="d in doors" :key="d.id">
+            <article class="relative bg-white shadow-soft">
+              <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg">
+                <svg viewBox="0 0 24 24" class="w-6 h-6" :class="d.state === 'abierto' ? 'gate-open' : ''" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 21V3h20v18"/><path class="gate-left" d="M4 6h8v14H4zM8 6v14"/><path class="gate-right" d="M12 6h8v14h-8zM16 6v14"/></svg>
+              </div>
+              <div class="p-5 pt-4">
+                <p class="text-sm text-gray-500" x-text="d.kind"></p>
+                <h3 class="text-xl font-bold text-material-dark" x-text="d.name"></h3>
+                <p class="mt-1.5 text-xs flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="d.online ? 'bg-emerald-500' : 'bg-red-500'"></span>
+                  <span x-text="statusLine(d)"></span>
+                </p>
+              </div>
+              <div class="px-5 pb-5">
+                <button type="button"
+                        class="hold relative w-full h-16 overflow-hidden border font-bold text-sm transition-colors"
+                        :class="btnClass(d)"
+                        :disabled="!d.online || d.state === 'abriendo' || d.state === 'abierto'"
+                        :aria-label="'Abrir ' + d.name + '. ' + label(d)"
+                        @pointerdown.prevent="startHold(d.id)"
+                        @pointerup="cancelHold(d.id)" @pointerleave="cancelHold(d.id)" @pointercancel="cancelHold(d.id)" @blur="cancelHold(d.id)"
+                        @contextmenu.prevent
+                        @keydown.enter.prevent="startHold(d.id)" @keydown.space.prevent="startHold(d.id)"
+                        @keyup.enter="cancelHold(d.id)" @keyup.space="cancelHold(d.id)">
+                  <!-- Relleno: avanza como un portón que se desliza -->
+                  <span class="absolute inset-y-0 left-0" :class="fillClass(d)"
+                        :style="'width:' + (d.progress) + '%; transition: ' + (d.state === 'sosteniendo' ? 'none' : 'width .25s ease')"></span>
+                  <!-- Texto oscuro (parte aún sin llenar) -->
+                  <span class="absolute inset-0 flex items-center justify-center gap-2 px-4" :class="textClass(d)"
+                        :style="'clip-path: inset(0 0 0 ' + (d.progress) + '%)'">
+                    <i :class="icon(d)" aria-hidden="true"></i><span x-text="label(d)"></span>
+                  </span>
+                  <!-- Texto claro (parte ya llena) -->
+                  <span class="absolute inset-0 flex items-center justify-center gap-2 px-4 text-white pointer-events-none" aria-hidden="true"
+                        :style="'clip-path: inset(0 ' + (100 - d.progress) + '% 0 0)'">
+                    <i :class="icon(d)"></i><span x-text="label(d)"></span>
+                  </span>
+                </button>
+                <button @click="confirmDoor(d)" :disabled="d.state === 'abriendo'" class="mt-2 w-full py-2 text-xs underline text-material-text">Abrir con confirmación</button>
+                <p x-show="d.hint" x-cloak class="mt-2 text-xs text-amber-700">Sigue presionando hasta que la barra se llene.</p>
+              </div>
+            </article>
+          </template>
+        </div>
+        <p class="mt-4 text-xs text-material-text">Mantén presionado el botón para abrir. Así evitas aperturas accidentales desde el bolsillo.</p>
+        <p class="sr-only" aria-live="polite" x-text="live"></p>
+      </section>
+
+      <!-- PASES -->
+      <section id="pases" class="mt-14" aria-labelledby="t-pases">
+        <div class="relative bg-white shadow-soft">
+          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
+            <h2 id="t-pases" class="text-white font-bold text-base">Pases de visita activos</h2>
+            <button @click="openSheet()" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Nuevo pase
+            </button>
+          </div>
+
+          <div class="p-5 md:p-6 pt-6">
+            <template x-if="livePasses.length === 0">
+              <div class="py-10 text-center">
+                <i class="fa-solid fa-qrcode text-2xl text-gray-300" aria-hidden="true"></i>
+                <p class="mt-3 text-sm font-medium text-material-dark">No tienes pases activos</p>
+                <p class="text-xs text-material-text mt-1">Crea un pase para una visita, una entrega o un servicio.</p>
+                <button @click="openSheet()" class="mt-4 text-sm font-semibold text-white bg-material-dark px-4 py-2.5">Crear pase</button>
+              </div>
+            </template>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <template x-for="p in livePasses" :key="p.id">
+                <article class="border border-material-border flex flex-col">
+                  <div class="p-4 flex-1">
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold"
+                            :class="expiring(p) ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
+                        <i :class="expiring(p) ? 'fa-solid fa-hourglass-end' : 'fa-solid fa-check'" class="text-[10px]" aria-hidden="true"></i>
+                        <span x-text="passStatus(p)"></span>
+                      </span>
+                      <span class="text-xs text-material-text flex items-center gap-1.5"><i :class="p.icon" aria-hidden="true"></i><span x-text="p.type"></span></span>
+                    </div>
+                    <h3 class="text-sm font-bold text-material-dark" x-text="p.name"></h3>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="'Acceso: ' + accessLabel(p)"></p>
+
+                    <p class="code text-2xl text-material-dark mt-4" x-text="grouped(p.code)"></p>
+
+                    <div class="mt-4">
+                      <div class="h-1 bg-gray-100" role="progressbar" aria-label="Tiempo restante" :aria-valuenow="percent(p)" aria-valuemin="0" aria-valuemax="100">
+                        <div class="h-1" :class="expiring(p) ? 'bg-amber-500' : 'bg-material-dark'" :style="'width:' + (pct(p)) + '%'"></div>
+                      </div>
+                      <p class="text-xs text-gray-500 mt-1.5">
+                        <span x-text="expiryText(p)"></span> · quedan <span class="font-medium text-material-dark" x-text="leftText(p)"></span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="border-t border-material-border grid" :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'">
+                    <button @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar código">
+                      <i class="fa-regular fa-copy" aria-hidden="true"></i>Copiar</button>
+                    <button @click="share(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Compartir pase">
+                      <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Compartir</button>
+                    <button x-show="canExtend(p)" x-cloak @click="extend(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Extender 30 minutos">
+                      <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>+30 min</button>
+                    <button @click="confirmRevoke(p)"
+                            class="py-2.5 text-xs font-medium flex flex-col items-center gap-1"
+                            :class="armed === 'r' + p.id ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'">
+                      <i class="fa-solid fa-ban" aria-hidden="true"></i><span x-text="armed === 'r' + p.id ? '¿Seguro?' : 'Revocar'"></span></button>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ACTIVIDAD -->
+      <section id="actividad" class="mt-14" aria-labelledby="t-act">
+        <div class="relative bg-white shadow-soft">
+          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
+            <h2 id="t-act" class="text-white font-bold text-base">Actividad reciente</h2>
+          </div>
+          <div class="px-5 md:px-6 pt-5 flex gap-2" role="group" aria-label="Filtrar actividad">
+            <button @click="filter = 'todo'" :aria-pressed="filter === 'todo'"
+                    class="px-3 py-1.5 text-xs font-medium border"
+                    :class="filter === 'todo' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">Todo</button>
+            <button @click="filter = 'rechazados'" :aria-pressed="filter === 'rechazados'"
+                    class="px-3 py-1.5 text-xs font-medium border"
+                    :class="filter === 'rechazados' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">
+              Rechazados <span x-text="rejectedCount"></span></button>
+          </div>
+          <ul class="mt-3 pb-2">
+            <template x-for="(a, i) in visibleActivity" :key="i + a.title + a.time">
+              <li class="flex items-center gap-4 px-5 md:px-6 py-3 border-b border-material-border last:border-0">
+                <div class="h-9 w-9 shrink-0 bg-gray-50 flex items-center justify-center text-material-dark"><i :class="a.icon" class="text-sm" aria-hidden="true"></i></div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-material-dark truncate" x-text="a.title"></p>
+                  <p class="text-xs text-gray-400 truncate" x-text="a.meta"></p>
+                  <p x-show="!a.ok" class="text-xs text-red-600 mt-0.5" x-text="a.reason"></p>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold" :class="a.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                    <i :class="a.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark'" class="text-[10px]" aria-hidden="true"></i><span x-text="a.ok ? 'Éxito' : 'Rechazado'"></span>
+                  </span>
+                  <p class="text-xs text-gray-500 mt-1" x-text="a.time"></p>
+                </div>
+              </li>
+            </template>
+            <li x-show="visibleActivity.length === 0" x-cloak class="px-6 py-8 text-center text-sm text-material-text">No hay intentos rechazados.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- NAV INFERIOR (móvil) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-material-border shadow-floating" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="Navegación rápida">
+    <ul class="grid grid-cols-4">
+      <template x-for="i in [['accesos','Accesos','fa-door-open'],['pases','Pases','fa-qrcode'],['actividad','Historial','fa-clock-rotate-left']]" :key="i[0]">
+        <li>
+          <a :href="'#' + i[0]" @click="tab = i[0]" :aria-current="tab === i[0] ? 'page' : null"
+             class="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2"
+             :class="tab === i[0] ? 'text-material-dark border-material-dark' : 'text-material-text border-transparent'">
+            <i :class="'fa-solid ' + i[2]" class="text-base" aria-hidden="true"></i><span x-text="i[1]"></span>
+          </a>
+        </li>
+      </template>
+      <li>
+        <button @click="drawer = true" class="w-full flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-material-text border-t-2 border-transparent">
+          <i class="fa-solid fa-bars text-base" aria-hidden="true"></i>Más
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- NUEVO PASE -->
+  <div x-trap.inert.noscroll="sheet" x-show="sheet" x-cloak class="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="absolute inset-0 bg-black/40" @click="sheet = false" x-transition.opacity></div>
+    <form @submit.prevent="createPass()" novalidate
+          class="relative bg-white w-full md:max-w-md shadow-floating max-h-[92vh] overflow-y-auto"
+          x-show="sheet" x-transition:enter="transition duration-200" x-transition:enter-start="translate-y-6 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
+      <div class="px-6 py-4 bg-material-dark flex items-center justify-between">
+        <h2 id="sheet-title" class="text-white font-bold">Nuevo pase de visita</h2>
+        <button type="button" @click="sheet = false" class="on-dark text-white/80 hover:text-white w-8 h-8" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-6 space-y-5">
+        <div>
+          <label for="f-name" class="text-sm font-medium text-material-dark">Nombre o referencia</label>
+          <input id="f-name" x-ref="name" x-model="passName" type="text" placeholder="Ej. María López" autocomplete="off"
+                 class="mt-1.5 w-full border border-gray-300 px-3 py-2.5 text-sm text-material-dark placeholder-gray-400 focus:border-material-dark"
+                 :aria-invalid="formError && !form.name.trim() ? 'true' : 'false'">
+        </div>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-material-dark">Tipo</legend>
+          <div class="mt-1.5 grid grid-cols-3">
+            <template x-for="t in typeNames" :key="t">
+              <label class="cursor-pointer">
+                <input type="radio" name="type" class="peer sr-only" :value="t" x-model="passCategory">
+                <span class="flex items-center justify-center gap-2 border border-gray-300 -ml-px first:ml-0 py-2.5 text-sm text-material-dark peer-checked:bg-material-dark peer-checked:text-white peer-checked:border-material-dark peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-material-dark">
+                  <i :class="types[t]" class="text-xs" aria-hidden="true"></i><span x-text="t"></span>
+                </span>
+              </label>
+            </template>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-material-dark">Vigencia</legend><label for="pass-mode" class="sr-only">Uso del pase</label><select id="pass-mode" x-model="passMode" class="w-full border border-gray-300 p-2 text-sm mb-2 text-material-dark"><option value="repeat">Reutilizable hasta el vencimiento</option><option value="visit">Una visita · 10 minutos desde el primer uso</option><option value="unlimited">Sin vencimiento</option></select><p x-show="form.mode === 'visit'" class="text-xs mb-2">La duración indica hasta cuándo puede comenzar la visita.</p>
+          <div class="mt-1.5 grid grid-cols-4">
+            <template x-for="o in [[30,'30 min'],[120,'2 h'],[360,'6 h'],[1440,'24 h']]" :key="o[0]">
+              <label class="cursor-pointer">
+                <input type="radio" :disabled="form.mode === 'unlimited'" name="mins" class="peer sr-only" :value="o[0]" x-model.number="passMinutes">
+                <span class="flex items-center justify-center border border-gray-300 -ml-px first:ml-0 py-2.5 text-sm text-material-dark peer-checked:bg-material-dark peer-checked:text-white peer-checked:border-material-dark peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-material-dark" x-text="o[1]"></span>
+              </label>
+            </template>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-material-dark">Accesos permitidos</legend>
+          <div class="mt-1.5 space-y-2">
+            <template x-for="d in doors" :key="d.id"><label class="flex items-center gap-3 text-sm text-material-dark"><input type="checkbox" x-model="passDoors" :value="d.id" class="w-4 h-4 accent-[#344767]"><span x-text="d.name"></span></label></template>
+          </div>
+        </fieldset>
+
+        <p x-show="formError" x-cloak class="text-sm text-red-600 flex items-center gap-2" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="formError"></span></p>
+      </div>
+      <div class="px-6 pb-6 flex gap-3">
+        <button type="button" @click="sheet = false" class="flex-1 py-3 border border-gray-300 text-sm font-semibold text-material-dark hover:bg-gray-50">Cancelar</button>
+        <button type="submit" :disabled="busy" class="flex-1 py-3 bg-material-dark text-white text-sm font-semibold hover:bg-material-darker">Crear pase</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- TOAST -->
+  <div x-show="toastOn" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed z-50 bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">
+    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i><span x-text="toastMsg"></span>
+  </div>
+</body>

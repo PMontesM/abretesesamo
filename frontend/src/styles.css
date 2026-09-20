@@ -1,0 +1,13 @@
+@import '@fontsource/roboto/latin-400.css';
+@import '@fontsource/roboto/latin-500.css';
+@import '@fontsource/roboto/latin-700.css';
+@import '@fontsource/roboto-mono/latin-400.css';
+@import '@fontsource/roboto-mono/latin-500.css';
+@import '@fortawesome/fontawesome-free/css/all.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+[x-cloak]{display:none!important}body{-webkit-tap-highlight-color:transparent}.shadow-soft{box-shadow:0 4px 6px -1px #00000014,0 2px 4px -1px #0000000a}.shadow-floating{box-shadow:0 4px 20px #00000024,0 7px 10px -5px #34476766}.scrollbar-thin::-webkit-scrollbar{width:6px}.scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}:focus-visible{outline:2px solid #344767;outline-offset:2px}.on-dark:focus-visible{outline-color:white}main{scroll-behavior:smooth}[id]{scroll-margin-top:96px}.hold{-webkit-touch-callout:none;user-select:none;touch-action:pan-y}.code{font-family:'Roboto Mono',ui-monospace,monospace;letter-spacing:.16em}button:disabled{opacity:.55;cursor:not-allowed}.info-dialog{border:0;max-width:420px;width:calc(100% - 32px);padding:24px;color:#344767;box-shadow:0 10px 50px #0003}.info-dialog::backdrop{background:#0006}.info-dialog h2{font-size:20px;font-weight:700;margin-bottom:14px}.info-dialog p{white-space:pre-wrap;line-height:1.7}.info-dialog button{display:block;margin:20px 0 0 auto;background:#344767;color:#fff;padding:10px 20px}.hold-success .fa-door-open{animation:gate-open .8s both}@keyframes gate-open{to{transform:translateX(4px)}}
+@media(prefers-reduced-motion:reduce){main{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.gate-open .gate-left{transform:translateX(-6px);transition:transform .6s}.gate-open .gate-right{transform:translateX(6px);transition:transform .6s}

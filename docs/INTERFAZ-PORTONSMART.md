@@ -1,25 +1,32 @@
 # Interfaz PortonSmart
 
-La interfaz adopta las propuestas Panel Admin v2 y Mi Acceso v2: fondo gris claro, navegación blanca, tarjetas con iconos azul oscuro, cabeceras elevadas y controles adaptados a móvil. La marca visible es PortonSmart; el repositorio, las direcciones, el Worker y los identificadores de los dispositivos conservan sus nombres para mantener los enlaces existentes.
+Panel y Mi Acceso parten de los HTML originales conservados en `frontend/reference/`. Las plantillas de producción están en `frontend/templates/`: mantienen composición, tarjetas, tipografía, iconos y adaptación móvil, conectadas a datos reales mediante Alpine CSP. Los ejemplos no se publican.
 
-## Funciones integradas
+## Funciones
 
-- Administrador: resumen del edificio con órdenes enviadas en las últimas 24 horas, órdenes no enviadas o sin confirmar, códigos activos y última orden enviada. Gráfico de las últimas 24 franjas horarias, incluyendo la hora actual en curso, con tabla accesible. Las cifras se calculan en la base de datos, sin limitarse a los 200 registros visibles.
-- Residentes: tarjetas de portones y pases, copiar enlace, compartir por WhatsApp, revocar y consultar vigencia. Navegación inferior en móvil. Cada residente solo ve su historial y códigos.
-- Apertura: mantener pulsado 600 ms, con progreso visual; soltar antes, salir del botón o cancelar el gesto no envía una orden. Admite teclado y ofrece un botón alternativo con confirmación. Ambas rutas conservan la reserva e idempotencia del servidor. El icono existente se anima al confirmar el envío.
-- Crear códigos: vigencias rápidas de 30 minutos, 2, 6 o 24 horas, además de hoy, mañana y fecha personalizada. Se mantienen los tipos visita, reutilizable y sin vencimiento.
-- Historial: búsqueda por texto, filtro por portón/resultado y exportación CSV de los registros filtrados. La exportación neutraliza fórmulas de hoja de cálculo. Se indica el límite de 200 registros y la retención de 30 días.
-- Superadministrador: mismo diseño, resumen de edificios/portones/revisiones y conservación de configuración MQTT, inventario, permisos, auditoría y resolución de órdenes pendientes.
-- Visitantes e inicio de sesión: marca y diseño comunes, códigos legibles, errores junto al formulario, confirmación previa de las visitas y recuperación de su ventana de 10 minutos.
+- Panel: órdenes de hoy y ayer por hora, pases activos, vencimientos, historial con filtros y CSV, consultas de conexión y avisos basados en esas consultas.
+- Mi Acceso: mantener pulsado 600 ms, alternativa con confirmación, animación del icono, pases y actividad. El resultado confirma la orden comunicada por el dispositivo, no el movimiento físico del portón.
+- Pases: categorías Visita, Entrega y Servicio; un código para varios accesos autorizados; vigencias de 30 minutos, 2, 6 o 24 horas; modos reutilizable, visita y sin vencimiento. Compartir por WhatsApp, copiar y revocar.
+- Las visitas comparten diez minutos desde la primera orden satisfactoria, incluso entre varios portones. El visitante elige el acceso y confirma antes del primer uso.
+- Extensión de 30 minutos para reutilizables vigentes que vencen en diez minutos, hasta siete días desde su creación. No modifica visitas ni recupera pases revocados o vencidos.
+- Usuarios, lista completa de códigos, superadministración e ingreso de visitantes conservan sus funciones y la marca PortonSmart.
 
-## Adaptaciones respecto a los ejemplos
+## Arquitectura y costo
 
-Los ejemplos contienen datos ficticios. No se publican cifras ni estados simulados. La conexión conserva su fecha de consulta y caduca visualmente tras dos minutos; no implica monitoreo continuo. La franja de disponibilidad de 24 horas, las categorías Visita/Entrega/Servicio y un pase único para varios portones no se incorporan: necesitan historial de telemetría o cambios en el modelo de datos. Las notas siguen permitiendo identificar visitas, entregas y servicios.
+Frontend y servidor tienen carpetas separadas en el mismo repositorio y despliegue. Alpine CSP, Tailwind, Roboto e iconos Font Awesome se compilan y sirven desde Workers Assets. No hay CDN requerido, eval ni scripts ejecutables en línea. El Worker valida las sesiones y permisos.
 
-Cada código sigue asociado a un portón. No se añade la extensión rápida de 30 minutos, que podría alterar la regla de visita de 10 minutos. Se puede crear un nuevo acceso con la vigencia deseada. Una respuesta satisfactoria confirma una orden, no el movimiento físico del portón.
+El panel consulta al entrar o actualizar, sin sondeos continuos. La franja de 24 horas contiene comprobaciones puntuales: gris significa sin datos. Se conserva como máximo una observación por dispositivo y hora y se limpia después de 48 horas. La conexión muestra su fecha y caduca visualmente tras dos minutos. Se conserva la arquitectura del plan gratuito; las cuotas de Workers y D1 siguen aplicando.
 
-No hay dependencias de Tailwind, Alpine, fuentes o iconos por CDN; los estilos y SVG forman parte del Worker y respetan su política de contenido. No requiere migración ni cambios en el firmware.
+## Instalación y actualización
 
-## Validación
+Desde cero: usar `database/schema.sql`. En una instalación existente con migraciones hasta 008: respaldar D1 y aplicar una sola vez `database/migration_009_frontend.sql` antes del nuevo Worker. Es aditiva y conserva códigos y usuarios existentes. No requiere cambiar el firmware.
 
-Ejecutar `node tools/build-client.mjs`, `node --test tests/*.test.mjs`, `node tests/ui.mjs` y `node tests/design-ui.mjs`. Las pruebas de navegador requieren Playwright y un navegador; pueden configurarse con `PLAYWRIGHT_PATH` y `BROWSER_PATH`. Para validar el paquete final, usar `WORKER_BUNDLE` con la ruta del Worker empaquetado. Se utilizan base de datos en memoria y dispositivos simulados; nunca se abren portones reales.
+```sh
+npm ci
+npm run setup:frontend
+npm run build
+npm test
+npm run test:ui
+```
+
+Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. Utilizan bases en memoria y dispositivos simulados. `src/html/templates.js` y `src/html/client.js` son generados: editar las fuentes de frontend y compilar.

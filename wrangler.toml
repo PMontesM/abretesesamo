@@ -16,3 +16,7 @@ crons = ["*/15 * * * *"]
 # [[routes]]
 # pattern = "porton.inomali.com"
 # custom_domain = true
+
+[assets]
+directory = "./frontend/dist"
+binding = "ASSETS"
