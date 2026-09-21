@@ -245,7 +245,7 @@ export function clientApp(config){
   async function start(){
     if(config.mode==='platform-login'){view.append(loginForm(true));if(new URLSearchParams(location.search).get('passwordChanged')==='1'){message('Contraseña actualizada. Inicia sesión con tu nueva contraseña.');history.replaceState(null,'',location.pathname);}return;}
     if(config.mode==='public'){
-      const params=new URLSearchParams(location.search),fromLink=params.has('code'),recoveryKey='visitor-access:'+config.tenant.id;
+      const params=new URLSearchParams(location.search),recoveryKey='visitor-access:'+config.tenant.id;
       let saved='';try{saved=sessionStorage.getItem(recoveryKey)||'';}catch{}
       const s=section('Abrir con código de visita'),f=el('form');s.append(el('p','Escribe tu código para enviar la orden al portón.','entry-subtitle'));f.className='visitor-form';
       const code=input(f,'Código de seis dígitos','text',params.get('code')||saved);code.inputMode='numeric';code.pattern='[0-9]{6}';code.maxLength=6;code.autocomplete='off';const residentEntry=params.get('access')==='resident';history.replaceState(null,'',location.pathname);
@@ -262,8 +262,8 @@ export function clientApp(config){
       }catch(err){feedback(result,err.message,true);refresh.hidden=false;}finally{submit.disabled=false;if(submit.dataset.state!=='confirmed')paintOpen('idle');}});
       s.append(f,refresh,helpButton());
       const resident=loginForm(false),choices=el('div',undefined,'entry-choices');resident.append(helpButton());choices.setAttribute('aria-label','Elige cómo entrar');const visitButton=button('Tengo un código de visita',()=>choose(false)),residentButton=button('Entrar con mi usuario',()=>choose(true));choices.append(visitButton,residentButton);
-      if(fromLink){residentButton.classList.add('secondary');view.append(s,resident,residentButton);}else view.append(choices,s,resident);
-      function choose(login){s.hidden=login;resident.hidden=!login;visitButton.setAttribute('aria-pressed',String(!login));residentButton.setAttribute('aria-pressed',String(login));if(fromLink){residentButton.hidden=login;if(login){view.append(visitButton);}}}
+      view.append(choices,s,resident);
+      function choose(login){s.hidden=login;resident.hidden=!login;visitButton.setAttribute('aria-pressed',String(!login));residentButton.setAttribute('aria-pressed',String(login));}
       choose(residentEntry);if(code.value&&!residentEntry){refresh.hidden=false;recover().catch(err=>feedback(result,err.message,true));}
       return;
     }
