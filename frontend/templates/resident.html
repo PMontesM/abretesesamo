@@ -59,29 +59,28 @@
       </button>
     </header>
 
-    <div class="px-5 md:px-8 pt-6 max-w-5xl mx-auto w-full">
+    <div class="px-4 md:px-8 pt-3 max-w-7xl mx-auto w-full">
 
-      <div class="flex justify-end mb-6"><button @click="refresh()" :disabled="busy" class="text-xs text-material-dark underline">Actualizar datos</button></div>
+      <div class="flex justify-end mb-3"><button @click="refresh()" :disabled="busy" class="text-xs text-material-dark underline">Actualizar datos</button></div>
 <!-- ABRIR -->
       <section id="accesos" aria-labelledby="t-abrir">
         <h2 id="t-abrir" class="sr-only">Abrir accesos</h2>
-        <p x-show="!loading && doors.length === 0" class="bg-white p-5 mb-6 text-sm">No tienes accesos asignados. Contacta al administrador.</p><div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
+        <p x-show="!loading && doors.length === 0" class="bg-white p-5 mb-6 text-sm">No tienes accesos asignados. Contacta al administrador.</p><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
           <template x-for="d in doors" :key="d.id">
             <article class="relative bg-white shadow-soft">
-              <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg">
-                <svg viewBox="0 0 24 24" class="w-6 h-6" :class="d.state === 'abierto' ? 'gate-open' : ''" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 21V3h20v18"/><path class="gate-left" d="M4 6h8v14H4zM8 6v14"/><path class="gate-right" d="M12 6h8v14h-8zM16 6v14"/></svg>
+              <div class="absolute top-3 right-3 w-9 h-9 bg-material-dark flex items-center justify-center text-white">
+                <svg viewBox="0 0 24 24" class="w-5 h-5" :class="d.state === 'abierto' ? 'gate-open' : ''" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 21V3h20v18"/><path class="gate-left" d="M4 6h8v14H4zM8 6v14"/><path class="gate-right" d="M12 6h8v14h-8zM16 6v14"/></svg>
               </div>
-              <div class="p-5 pt-4">
-                <p class="text-sm text-gray-500" x-text="d.kind"></p>
-                <h3 class="text-xl font-bold text-material-dark" x-text="d.name"></h3>
-                <p class="mt-1.5 text-xs flex items-center gap-1.5">
+              <div class="p-3 pr-14 pb-2">
+                <h3 class="text-base font-bold text-material-dark leading-snug" x-text="d.name"></h3>
+                <p class="mt-1 text-xs flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 rounded-full" :class="d.online ? 'bg-emerald-500' : 'bg-red-500'"></span>
                   <span x-text="statusLine(d)"></span>
                 </p>
               </div>
-              <div class="px-5 pb-5">
+              <div class="px-3 pb-2">
                 <button type="button"
-                        class="hold relative w-full h-16 overflow-hidden border font-bold text-sm transition-colors"
+                        class="hold relative w-full h-[52px] overflow-hidden border font-bold text-sm transition-colors"
                         :class="btnClass(d)"
                         :disabled="!d.online || d.state === 'abriendo' || d.state === 'abierto'"
                         :aria-label="'Abrir ' + d.name + '. ' + label(d)"
@@ -104,7 +103,7 @@
                     <i :class="icon(d)"></i><span x-text="label(d)"></span>
                   </span>
                 </button>
-                <button @click="confirmDoor(d)" :disabled="d.state === 'abriendo'" class="mt-2 w-full py-2 text-xs underline text-material-text">Abrir con confirmación</button>
+                <button @click="confirmDoor(d)" :disabled="d.state === 'abriendo'" class="mt-1 w-full min-h-[40px] py-2 text-xs underline text-material-text">Abrir con confirmación</button>
                 <p x-show="d.hint" x-cloak class="mt-2 text-xs text-amber-700">Sigue presionando hasta que la barra se llene.</p>
               </div>
             </article>
