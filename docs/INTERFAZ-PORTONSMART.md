@@ -50,3 +50,7 @@ No requiere migración de base de datos ni cambios de firmware.
 Todos mis códigos permanece dentro de Mi Acceso, con consulta paginada, filtro de estado y búsqueda por código exacto. El formulario ofrece Con vigencia, Un solo uso (una visita con diez minutos de reintentos) y Permanente; oculta las fechas para el permanente. Al crear se muestra una tarjeta con código, accesos, vigencia y acciones de copiar solo el código o compartir instrucciones por WhatsApp.
 
 La apertura del residente usa pulsación de 400 ms, sin selección de texto ni menú de pulsación prolongada en el control; cancelar el gesto detiene el envío. La alternativa abre una confirmación con el diseño de PortonSmart. En visitantes la animación está dentro del botón y el verde indica Orden confirmada, sin una segunda leyenda de éxito. Permanecen los errores y la cuenta regresiva de la visita. Una confirmación no demuestra movimiento físico sin sensores.
+
+## Simplificación del panel de residente
+
+Se elimina la sección y enlace duplicados Todos mis códigos. Cerrar sesión aparece con texto en el panel lateral, ajustado a la altura visible del celular. Un solo uso permite comenzar durante siete días y conserva diez minutos desde el primer uso confirmado, sin selector de fecha. Con vigencia ofrece 1 día, 7 días u otra cantidad entera de 1 a 30. Permanente no tiene vencimiento. El historial muestra el código usado o Apertura desde el panel cuando no hubo código. Los códigos existentes conservan sus fechas.

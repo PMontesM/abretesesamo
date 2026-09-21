@@ -4,7 +4,7 @@
   <!-- SIDEBAR / DRAWER -->
   <aside :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
          class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
-         aria-label="Menú principal">
+         style="height:100dvh" aria-label="Menú principal">
     <div class="h-20 flex items-center px-6">
       <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white shadow-floating">
         <i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i>
@@ -12,7 +12,7 @@
       <span class="ml-3 text-material-dark text-sm font-bold tracking-wider">PORTONSMART</span>
     </div>
     <hr class="border-material-border mx-4 mb-4">
-    <nav class="flex-1 px-4 overflow-y-auto scrollbar-thin">
+    <nav class="flex-1 min-h-0 px-4 overflow-y-auto scrollbar-thin">
       <a x-show="user.role === 'master'" :href="dashboardUrl" class="block px-3 py-3 mb-2 text-sm text-material-dark">← Panel de administración</a><p class="px-3 text-xs font-medium text-material-text mb-2">Mi cuenta</p>
       <a href="#accesos" @click="selectTab('accesos')" class="flex items-center px-3 py-3 bg-material-dark text-white shadow-floating font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span><span class="ml-2">Mis accesos</span>
@@ -30,9 +30,7 @@
       <a href="#" @click.prevent="support()" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span><span class="ml-2">Soporte</span>
       </a>
-      <a href="#todos-codigos" @click="showCodes()" class="flex items-center px-3 py-3 mt-1 text-material-dark hover:bg-gray-50 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Todos mis códigos</span>
-      </a>
+      <button @click="logout()" class="flex items-center gap-3 w-full px-3 py-4 mt-4 text-sm font-semibold text-material-dark"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar sesión</button>
     </nav>
     <div class="p-4 border-t border-material-border">
       <div class="bg-gray-50 p-3 flex items-center gap-3">
@@ -41,7 +39,6 @@
           <p class="text-xs font-semibold text-material-dark truncate"><span x-text="user.username"></span></p>
           <p class="text-xs text-material-text truncate"><span x-text="user.role === 'master' ? 'Administración' : 'Residente'"></span></p>
         </div>
-        <button class="text-material-text hover:text-material-dark" @click="logout()" aria-label="Cerrar sesión"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
       </div>
     </div>
   </aside>
@@ -184,8 +181,7 @@
       </section>
 
       <!-- ACTIVIDAD -->
-<section id="todos-codigos" class="mt-14 bg-white shadow-soft p-6"><h2 class="font-bold bg-material-dark text-white shadow-floating px-6 py-4 -mx-2 -mt-12">Todos mis códigos</h2><form @submit.prevent="loadCodes(0)" class="mt-4 flex flex-wrap gap-3"><label class="text-sm">Código exacto<input x-model="codeSearch" maxlength="6" inputmode="numeric" class="block border p-2"></label><label class="text-sm">Estado<select aria-label="Estado del código" x-model="codeState" class="block border p-2"><option value="">Todos</option><option value="current">Vigentes y por revisar</option><option value="expired">Vencidos</option><option value="revoked">Revocados</option><option value="used">Utilizados</option></select></label><button :disabled="codeLoading" class="bg-material-dark text-white px-4 py-2 self-end">Buscar códigos</button></form><div class="grid md:grid-cols-2 gap-4 mt-5"><template x-for="p in allCodes" :key="p.id"><article class="border p-4"><h3 class="font-bold" x-text="p.name"></h3><p class="font-mono text-xl my-2" x-text="grouped(p.code)"></p><p class="text-sm" x-text="accessLabel(p)"></p><p class="text-xs mt-2" x-text="expiryText(p)"></p><p class="text-xs mt-2" x-text="codeStatus(p)"></p><button @click="copy(p)" class="text-sm underline mr-4">Copiar código</button><button x-show="p.status === 'active'" @click="share(p)" class="text-sm underline">WhatsApp</button><button x-show="p.status === 'active' || p.status === 'pending' || p.status === 'uncertain'" @click="confirmRevoke(p)" class="block text-sm text-red-600 mt-2" x-text="armed === 'r'+p.id ? 'Confirmar revocación' : 'Revocar'"></button></article></template></div><div class="flex justify-between mt-4"><button @click="previousCodes()" :disabled="codeLoading || codePage === 0">Anterior</button><span class="text-xs" x-text="'Página '+(codePage+1)"></span><button @click="nextCodes()" :disabled="codeLoading || allCodes.length < 100">Siguiente</button></div><p x-show="allCodes.length === 0" class="text-sm mt-3">Consulta tus códigos con los filtros de arriba.</p></section>
-      <section id="actividad" class="mt-14" aria-labelledby="t-act">
+<section id="actividad" class="mt-14" aria-labelledby="t-act">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
             <h2 id="t-act" class="text-white font-bold text-base">Actividad reciente</h2>
@@ -206,7 +202,7 @@
                 <div class="h-9 w-9 shrink-0 bg-gray-50 flex items-center justify-center text-material-dark"><i :class="a.icon" class="text-sm" aria-hidden="true"></i></div>
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-medium text-material-dark truncate" x-text="a.title"></p>
-                  <p class="text-xs text-gray-400 truncate" x-text="a.meta"></p>
+                  <p class="text-xs text-gray-400 truncate" x-text="a.meta"></p><p class="text-xs mt-1 font-mono" x-text="a.code ? 'Código: ' + grouped(a.code) : 'Apertura desde el panel'"></p>
                   <p x-show="!a.ok" class="text-xs text-red-600 mt-0.5" x-text="a.reason"></p>
                 </div>
                 <div class="text-right shrink-0">
@@ -262,17 +258,7 @@
                  :aria-invalid="formError && !form.name.trim() ? 'true' : 'false'">
         </div>
 
-        <fieldset><legend class="text-sm font-medium text-material-dark">Tipo</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['repeat','Con vigencia'],['visit','Un solo uso'],['unlimited','Permanente']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="mode" class="peer sr-only" :value="o[0]" x-model="passMode"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><p x-show="form.mode === 'visit'" class="text-xs mt-3">Una visita: desde la primera orden confirmada tendrás 10 minutos para volver a abrir.</p><p x-show="form.mode === 'unlimited'" class="text-xs mt-3">Funciona hasta que lo revoques.</p></fieldset><fieldset x-show="form.mode !== 'unlimited'"><legend class="text-sm font-medium text-material-dark" x-text="form.mode === 'visit' ? 'Puede comenzar hasta' : 'Vigencia'"></legend>
-          <label for="deadline-preset" class="block text-sm mt-3">Fecha límite</label><select id="deadline-preset" x-model="deadlinePreset" :disabled="form.mode === 'unlimited'" class="w-full border border-gray-300 p-2 text-sm mt-1"><option value="quick">Duración rápida</option><option value="today">Hoy</option><option value="tomorrow">Mañana</option><option value="custom">Elegir fecha y hora</option></select><div x-show="deadlinePreset === 'custom' && form.mode !== 'unlimited'" class="mt-3"><label for="custom-deadline" class="block text-sm">Fecha y hora límite</label><input id="custom-deadline" type="datetime-local" x-model="customDeadline" class="w-full border border-gray-300 p-2"></div>
-          <div x-show="deadlinePreset === 'quick' && form.mode !== 'unlimited'" class="mt-1.5 grid grid-cols-4">
-            <template x-for="o in [[30,'30 min'],[120,'2 h'],[360,'6 h'],[1440,'24 h']]" :key="o[0]">
-              <label class="cursor-pointer">
-                <input type="radio" :disabled="form.mode === 'unlimited'" name="mins" class="peer sr-only" :value="o[0]" x-model.number="passMinutes">
-                <span class="flex items-center justify-center border border-gray-300 -ml-px first:ml-0 py-2.5 text-sm text-material-dark peer-checked:bg-material-dark peer-checked:text-white peer-checked:border-material-dark peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-material-dark" x-text="o[1]"></span>
-              </label>
-            </template>
-          </div>
-        </fieldset>
+        <fieldset><legend class="text-sm font-medium text-material-dark">Tipo</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['repeat','Con vigencia'],['visit','Un solo uso'],['unlimited','Permanente']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="mode" class="peer sr-only" :value="o[0]" x-model="passMode"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><p x-show="form.mode === 'visit'" class="text-xs mt-3">Tienes 7 días para comenzar la visita. Desde la primera orden confirmada tendrás 10 minutos para volver a abrir.</p><p x-show="form.mode === 'unlimited'" class="text-xs mt-3">Funciona hasta que lo revoques.</p></fieldset><fieldset x-show="form.mode === 'repeat'"><legend class="text-sm font-medium text-material-dark">Vigencia</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['1','1 día'],['7','7 días'],['custom','Otra cantidad']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="duration" class="peer sr-only" :value="o[0]" x-model="durationDays"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><div x-show="durationDays === 'custom'" class="mt-3"><label for="custom-days" class="text-sm">Cantidad de días (1 a 30)</label><input id="custom-days" type="number" min="1" max="30" step="1" x-model.number="customDays" class="mt-2 w-full border border-gray-300 p-3"></div></fieldset>
 
         <fieldset>
           <legend class="text-sm font-medium text-material-dark">Accesos permitidos</legend>
