@@ -17,3 +17,5 @@ El respaldo anterior a la limpieza de septiembre de 2026 permanece en work/priva
 Para recuperar producción, restaura primero en una base separada, configura los secretos originales y verifica la aplicación antes de cambiar el dominio. Evita activar dispositivos reales durante las pruebas. INSTALACION.md corresponde a una instalación nueva.
 
 GitHub guarda los cambios confirmados y subidos. No se han configurado copias automáticas de D1 ni despliegues automáticos.
+
+Para restaurar la protección de tráfico, conservar también `TURNSTILE_SECRET_KEY` en un gestor seguro y seguir [PROTECCION-TRAFICO.md](PROTECCION-TRAFICO.md). Las reglas de seguridad del dominio y los widgets de Turnstile se configuran por separado del despliegue del Worker.

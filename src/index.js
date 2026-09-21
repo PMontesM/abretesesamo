@@ -1,3 +1,4 @@
+import {checkTurnstile,turnstileConfig} from './lib/turnstile.js';
 import {createPass,listPasses,extendPass,visitorGates} from './lib/passes.js';
 import {panelData} from './lib/panel.js';
 import {relayStatus} from './lib/relay.js';
@@ -51,10 +52,13 @@ function triggerReason(error){return (error instanceof TriggerError||error insta
 
 async function route(request,env,ctx) {
   const url=new URL(request.url);
+  if(env.PUBLIC_HOSTNAME&&url.hostname!==env.PUBLIC_HOSTNAME)return new Response('No encontrado',{status:404});
   if(request.method==='POST'){
     const origin=request.headers.get('Origin');
     if(origin&&origin!==url.origin)return json({ok:false,error:'Origen no autorizado'},403);
   }
+  const challengeFailure=await checkTurnstile(request,env);
+  if(challengeFailure)return challengeFailure;
   if(url.pathname==='/health')return json({ok:true,service:'Servidor web; no confirma estado físico del portón'});
   if(url.pathname==='/platform'||url.pathname.startsWith('/platform/'))return handlePlatform(request,env,ctx,url);
   const parts=url.pathname.split('/').filter(Boolean);
@@ -63,7 +67,7 @@ async function route(request,env,ctx) {
   if(!tenant)return new Response('No encontrado',{status:404});
   if(tenant.status!=='active')return json({ok:false,error:'Edificio suspendido temporalmente'},403);
   const rest='/'+parts.slice(2).join('/');
-  if(rest==='/'&&request.method==='GET')return html(getPublicHTML(tenant));
+  if(rest==='/'&&request.method==='GET')return html(getPublicHTML(tenant,turnstileConfig(env)));
   const ip=request.headers.get('cf-connecting-ip')||'unknown';
   if(rest==='/api/login'&&request.method==='POST'){
     if(!await takeAttempt(env,`login:${tenant.id}:${ip}`))return json({ok:false,error:'Demasiados intentos. Espera cinco minutos.'},429);
@@ -151,7 +155,7 @@ export default {
     try{res=await route(request,env,ctx);}catch(err){res=json({ok:false,error:err instanceof InputError?err.message:'No se pudo completar la operación. Actualiza la lista antes de reintentar.'},err instanceof InputError?400:500);}
     const headers=new Headers(res.headers);
     headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');headers.set('X-Frame-Options','DENY');
-    headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
     return new Response(res.body,{status:res.status,headers});
   },
   async scheduled(event,env,ctx){ctx.waitUntil(db.cleanup(env));}

@@ -1,7 +1,14 @@
 name = "porton-saas-nuevo"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
-workers_dev = true
+workers_dev = false
+preview_urls = false
+
+[vars]
+TURNSTILE_REQUIRED = "true"
+TURNSTILE_SITE_KEY = "REEMPLAZA_CON_LA_CLAVE_PUBLICA_DEL_WIDGET"
+PUBLIC_HOSTNAME = "porton.inomali.com"
+# TURNSTILE_SECRET_KEY: guardar como secreto en Cloudflare antes de publicar.
 
 [[d1_databases]]
 binding = "DB"
@@ -12,7 +19,7 @@ database_id = "REEMPLAZA_CON_EL_ID_DE_LA_BASE_NUEVA"
 crons = ["*/15 * * * *"]
 
 # ADMIN_SIGNING_SECRET: crear como secreto, nunca pegar aquí.
-# El dominio personalizado se configura DESPUÉS de comprobar workers.dev.
+# Configura tu dominio personalizado antes de desplegar. Mantén workers.dev desactivado.
 # [[routes]]
 # pattern = "porton.inomali.com"
 # custom_domain = true

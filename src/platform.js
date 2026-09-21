@@ -1,3 +1,4 @@
+import {turnstileConfig} from './lib/turnstile.js';
 import {superPanel} from './lib/super-panel.js';
 import {relayStatus,pendingRelays,resolveRelay,RelayError} from './lib/relay.js';
 import {listInventory,registerRelay,requireInventory,discoverRelays} from './lib/relay-inventory.js';
@@ -12,7 +13,7 @@ const json=body=>Response.json({ok:true,...body});
 const html=body=>new Response(body,{headers:{'Content-Type':'text/html; charset=utf-8'}});
 export async function handlePlatform(request,env,ctx,url){
   const rest=url.pathname.replace(/^\/platform/,'')||'/';
-  if(rest==='/'&&request.method==='GET')return html(getPlatformLoginHTML());
+  if(rest==='/'&&request.method==='GET')return html(getPlatformLoginHTML(turnstileConfig(env)));
   if(rest==='/login'&&request.method==='POST'){
     const ip=request.headers.get('cf-connecting-ip')||'unknown';
     if(!await takeAttempt(env,`platform:${ip}`,10))return Response.json({ok:false,error:'Demasiados intentos. Espera cinco minutos.'},{status:429});

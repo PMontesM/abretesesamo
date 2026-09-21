@@ -10,9 +10,46 @@ export function clientApp(config){
   const date=value=>value?new Date(value).toLocaleString():'Sin vencimiento';
   const states={active:'Activo',inactive:'Inactivo',suspended:'Suspendido',revoked:'Revocado',expired:'Vencido',pending:'En curso / revisión',uncertain:'Requiere revisión',used:'Utilizado',sent:'Orden enviada',not_sent:'No enviada',closed:'Revisión cerrada'};
   const status=c=>c.status==='active'&&c.expires_at&&c.expires_at<=Date.now()?'Vencido':(states[c.status]||c.status);
+  let securityScript,securityQueue=Promise.resolve();
+  function loadSecurity(){
+    if(window.turnstile)return Promise.resolve();
+    if(securityScript)return securityScript;
+    securityScript=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');let settled=false;
+      const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);if(error){script.remove();securityScript=null;reject(error);}else resolve();};
+      const timer=setTimeout(()=>finish(Error('No se pudo cargar la verificación. Revisa tu conexión e intenta de nuevo.')),15000);
+      script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;
+      script.onload=()=>finish(window.turnstile?null:Error('La verificación no está disponible. Intenta de nuevo.'));
+      script.onerror=()=>finish(Error('No se pudo cargar la verificación. Revisa tu conexión e intenta de nuevo.'));
+      document.head.append(script);
+    });return securityScript;
+  }
+  function securityToken(action){
+    const task=securityQueue.catch(()=>{}).then(async()=>{
+      if(!config.turnstileSiteKey)throw Error('La verificación de seguridad no está disponible. Intenta más tarde.');
+      const card=el('div',undefined,'security-check'),label=el('p','Verificando conexión segura…'),host=el('div');label.setAttribute('role','status');card.append(label,host);view.prepend(card);
+      let widget;
+      try{
+        await loadSecurity();
+        return await new Promise((resolve,reject)=>{
+          let settled=false;const finish=(error,token)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve(token);};
+          const timer=setTimeout(()=>finish(Error('La verificación tardó demasiado. Intenta de nuevo.')),120000);
+          try{widget=window.turnstile.render(host,{sitekey:config.turnstileSiteKey,action,language:'es',theme:'light',size:'flexible',appearance:'interaction-only',retry:'never',
+            callback:token=>finish(null,token),
+            'error-callback':()=>{finish(Error('No pudimos verificar la conexión. Intenta de nuevo.'));return true;},
+            'expired-callback':()=>finish(Error('La verificación venció. Intenta de nuevo.')),
+            'timeout-callback':()=>finish(Error('La verificación venció. Intenta de nuevo.')),
+            'before-interactive-callback':()=>{label.textContent='Completa la verificación para continuar.';card.scrollIntoView({block:'center'});}
+          });}catch{finish(Error('No se pudo iniciar la verificación. Intenta de nuevo.'));}
+        });
+      }finally{if(widget!==undefined)window.turnstile?.remove(widget);card.remove();}
+    });securityQueue=task;return task;
+  }
   async function api(path,body){
-    let r;try{r=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}catch{throw Error('Sin conexión. Actualiza los datos antes de repetir una operación.');}
-    let data;try{data=await r.json();}catch{throw Error('Respuesta inesperada del servidor');}
+    const action=path.endsWith('/login')?'login':/\/api\/(access-state|open)$/.test(path)?'visitor':null;
+    const token=config.turnstileRequired&&body!==undefined&&action?await securityToken(action):null;
+    let r;try{r=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json',...(token?{'X-Turnstile-Token':token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});}catch{throw Error('Sin conexión. Actualiza los datos antes de repetir una operación.');}
+    let data;try{data=await r.json();}catch{throw Error(r.status===429?'Demasiadas solicitudes. Espera un momento antes de intentar de nuevo.':'Respuesta inesperada del servidor');}
     if(!r.ok||!data.ok){if(r.status===401){location.href=platform?'/platform':base;}const error=Error(data.error||'No se pudo completar la operación');error.operationClosed=data.operationClosed;throw error;}
     return data;
   }
