@@ -27,6 +27,15 @@ La regla propuesta cubre todas las rutas y subdominios de la zona, incluidos arc
 
 ## Límites y verificación
 
+### Cómo reconocer cada protección
+
+- **Turnstile:** puede aparecer «Verificando conexión segura…» al iniciar sesión o consultar un código. Normalmente se resuelve automáticamente; en ocasiones solicita interacción. No sustituye el límite de intentos de contraseña.
+- **Límite interno de inicio de sesión:** permite 10 intentos dentro de una ventana de cinco minutos; el siguiente se rechaza con «Demasiados intentos. Espera cinco minutos.». Cuenta los intentos que alcanzan esta etapa, no solo las contraseñas incorrectas. El acceso de cada edificio se cuenta por edificio e IP; el acceso de superadmin tiene su propio contador por IP.
+- La ventana comienza con el primer intento y no se prolonga por seguir intentando. El mensaje indica cinco minutos, pero la espera real es el tiempo restante de esa ventana. Recargar la página no elimina el bloqueo; después de vencer, un nuevo intento inicia otra ventana.
+- **Regla de Cloudflare:** debe aparecer Active en Seguridad → Reglas de seguridad. Events registra solicitudes bloqueadas; cero eventos es normal si no se ha superado el umbral.
+
+El usuario confirmó en producción que varios intentos con contraseña incorrecta mostraron el mensaje de espera. Para comprobar la experiencia normal, iniciar sesión con credenciales correctas después de finalizar la ventana. No probar los límites pulsando repetidamente Abrir: podría accionar hardware real.
+
 El filtro externo reduce solicitudes que alcanzan el Worker; Turnstile evita operaciones protegidas sin comprobación válida. Ninguno garantiza impedir que un ataque distribuido agote las cuotas gratuitas. Los contadores externos pueden demorar en aplicarse y no constituyen un presupuesto global exacto. Los rechazos que se producen dentro del Worker consumen solicitudes; los límites internos también consumen operaciones D1.
 
 Pruebas: `node --test tests/turnstile.test.mjs` y `node tests/turnstile-ui.mjs`, además de las pruebas generales. La prueba de interfaz usa simulaciones locales del widget, Siteverify y el dispositivo; no sustituye la comprobación final del widget real. Para pruebas locales con protección desactivada, omitir `TURNSTILE_REQUIRED` del entorno de pruebas; nunca hacerlo en producción para resolver un fallo de integración.
