@@ -2,6 +2,10 @@
 
 La implementación combina Turnstile, límites internos en D1 y una regla externa de Cloudflare. No requiere contratar un plan de pago. Tener el código en GitHub no activa por sí solo el widget ni la regla del dominio.
 
+## Producción verificada el 21 de septiembre de 2026
+
+Widget PortonSmart Managed creado para `porton.inomali.com`, secreto almacenado en el Worker y requisito activado. Publicación del Worker: `00a64421-fd08-44e8-b536-32b2c10df6e5`. Cloudflare confirmó `workers.dev` y previews desactivados. Regla `2f05ddb5c21e4f5cade81c828c80c665` activa: 30 solicitudes por IP cada 10 segundos, bloqueo de 10 segundos para todas las rutas de la zona. Se verificaron los formularios y los rechazos sin token en producción sin accionar hardware; las pruebas de interacción completas se hicieron con simulaciones. Falta la comprobación humana final del widget real al iniciar sesión.
+
 ## Activación
 
 1. Crear un widget Turnstile llamado PortonSmart, modo Managed, autorizado para el hostname de producción. No habilitar pre-clearance: esta integración valida tokens mediante Siteverify.
