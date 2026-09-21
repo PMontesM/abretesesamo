@@ -16,4 +16,6 @@ section,.card{border:0;border-radius:7px;padding:24px;margin-bottom:28px;box-sha
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}}
 
 body.entry section,body.entry dialog,body.entry button,body.entry input,body.entry select,body.entry .entry-choices{border-radius:0}body.entry dialog h2{background:#344767;color:white;padding:16px 24px;margin:-28px -28px 24px;font-size:1rem}body.entry section>h2{background:#344767;color:white;padding:16px 20px;margin:-28px -28px 24px;font-size:1rem}@media(max-width:760px){body.entry dialog h2{margin:-24px -20px 24px}body.entry section>h2{margin:-26px -22px 24px}}
+
+.visitor-gates{border:0;padding:0;margin:16px 0;display:grid;gap:8px}.visitor-gates[hidden]{display:none}.visitor-gates legend{font-size:.9rem;font-weight:600;margin-bottom:10px}.visitor-gate-choice{display:flex!important;align-items:center;gap:12px;border:1px solid #dce1e7;padding:14px;margin:0!important;cursor:pointer;color:#344767;background:#f8f9fb}.visitor-gate-choice:has(input:checked){border-color:#344767;background:#e9eef5}.entry .visitor-form .visitor-gate-choice input{width:18px;height:18px;min-height:18px;margin:0;accent-color:#344767}.visitor-gate-choice span{font-size:.9rem;font-weight:600}
 `;

@@ -73,7 +73,7 @@ async function route(request,env,ctx) {
   }
   if(rest==='/api/access-state'&&request.method==='POST'){
     if(!await takeAttempt(env,`visitor:${tenant.id}:${ip}`,30))return json({ok:false,error:'Demasiadas solicitudes. Espera cinco minutos.'},429);
-    const b=await jsonBody(request);if(!/^\d{6}$/.test(b.code||''))throw new InputError('El código debe tener seis dígitos');return json({ok:true,...await db.visitorStatus(env,tenant.id,b.code)});
+    const b=await jsonBody(request);if(!/^\d{6}$/.test(b.code||''))throw new InputError('El código debe tener seis dígitos');return json({ok:true,...await db.visitorStatus(env,tenant.id,b.code),gates:await visitorGates(env,tenant.id,b.code)});
   }
   if(rest==='/api/open'&&request.method==='POST'){
     if(!await takeAttempt(env,`visitor:${tenant.id}:${ip}`,30))return json({ok:false,error:'Demasiadas solicitudes. Espera cinco minutos.'},429);
