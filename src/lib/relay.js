@@ -12,7 +12,7 @@ async function credentials(env){
 }
 function account(saved,write=false){return [saved[write?'commandUsername':'statusUsername'],saved[write?'commandPassword':'statusPassword'],{endpoint:brokerEndpoint(saved)}];}
 function parse(text){try{return JSON.parse(text);}catch{return null;}}
-function validInfo(i){return i?.protocol===2&&/^[a-f0-9]{32}$/.test(i.boot_id)&&Number.isInteger(i.pulse_ms)&&i.pulse_ms>=100&&i.pulse_ms<=2000&&Number.isInteger(i.cooldown_ms)&&i.cooldown_ms>=0&&i.cooldown_ms<=60000;}
+function validInfo(i){return i?.protocol===3&&/^[a-f0-9]{32}$/.test(i.boot_id)&&Number.isInteger(i.pulse_ms)&&i.pulse_ms>=100&&i.pulse_ms<=2000&&Number.isInteger(i.cooldown_ms)&&i.cooldown_ms>=0&&i.cooldown_ms<=60000;}
 async function snapshot(reader,id,allowOffline=false){
   const root='gate/'+id+'/',deadline=Date.now()+6000,result={};
   while(!result.state||!result.info||!result.health||(requiresAvailability(result)&&result.availability===undefined)){
@@ -64,7 +64,7 @@ export async function relayOpen(env,gate,sourceId,connect=MQTTClient.connect){
     while(true){
       const e=await reader.wait(e=>e.type===3&&e.topic==='gate/'+id+'/ack'&&!e.retained,Math.max(1,deadline-Date.now()));
       const ack=parse(e.payload);
-      if(ack?.protocol===2&&ack.id===commandId&&ack.boot_id===command.boot_id){
+      if(ack?.protocol===3&&ack.id===commandId&&ack.boot_id===command.boot_id){
         if(ack.status==='rejected'){safeReject=true;throw new RelayError('El relé rechazó la orden; puede estar ocupado o tener el reloj desajustado');}
         if(ack.status==='completed'||(ack.status==='duplicate'&&ack.reason==='completed')){
           await env.DB.prepare("UPDATE relay_commands SET status='cooldown',release_at=? WHERE id=?").bind(Date.now()+data.info.cooldown_ms+1000,commandId).run();

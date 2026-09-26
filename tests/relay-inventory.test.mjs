@@ -32,7 +32,7 @@ test('Servidor: rechaza destinos ambiguos, puertos inválidos y rutas con creden
   assert.equal(brokerConfig({}).port,8884);
 });
 test('Inventario: descubrimiento registra datos retenidos y conserva nombres y asignaciones sin publicar',async()=>{const s=await setup();try{
-  const boot='b'.repeat(32),events=[event('device-one','state','offline'),event('device-two','state','online'),event('device-two','info',{protocol:2,boot_id:boot,clock_ready:true,pulse_ms:500}),event('device-two','health',{boot_id:boot,sampled_at:Math.floor(Date.now()/1000),rssi:-60}),event('bad/id','state','online')];
+  const boot='b'.repeat(32),events=[event('device-one','state','offline'),event('device-two','state','online'),event('device-two','info',{protocol:3,boot_id:boot,clock_ready:true,pulse_ms:500}),event('device-two','health',{boot_id:boot,sampled_at:Math.floor(Date.now()/1000),rssi:-60}),event('bad/id','state','online')];
   const b=readBroker(events);const result=await discoverRelays(s.env,b.connect);assert.equal(result.found,2);assert.equal(b.published,0);assert.ok(b.clients.every(c=>c.closed));
   const devices=await listInventory(s.env),one=devices.find(d=>d.device_id==='device-one'),two=devices.find(d=>d.device_id==='device-two');assert.equal(one.name,'Relé de pruebas');assert.equal(one.gate_id,s.gate.id);assert.equal(one.connection_state,'offline');assert.equal(two.gate_id,null);assert.equal(two.connection_state,'online');
   await db.saveGate(s.env,'t',{name:'Otra puerta',triggerType:'mqtt',deviceId:'device-two'});await assert.rejects(db.saveGate(s.env,'t',{name:'Duplicada',triggerType:'mqtt',deviceId:'device-two'}));await assert.rejects(db.saveGate(s.env,'t',{name:'Inexistente',triggerType:'mqtt',deviceId:'not-registered'}));
@@ -50,7 +50,7 @@ test('Inventario: disponibilidad offline gana al estado online retenido; nueva s
  const s=await setup();try{
   const boot='c'.repeat(32),events=[];
   for(const id of ['device-one','device-two']){
-   events.push(event(id,'state','online'),event(id,'info',{protocol:2,boot_id:boot,clock_ready:true,pulse_ms:500,availability_topic:true}),event(id,'health',{boot_id:boot,sampled_at:Math.floor(Date.now()/1000)}));
+   events.push(event(id,'state','online'),event(id,'info',{protocol:3,boot_id:boot,clock_ready:true,pulse_ms:500,availability_topic:true}),event(id,'health',{boot_id:boot,sampled_at:Math.floor(Date.now()/1000)}));
   }
   events.push(event('device-one','availability','offline'));
   const b=readBroker(events);await discoverRelays(s.env,b.connect);

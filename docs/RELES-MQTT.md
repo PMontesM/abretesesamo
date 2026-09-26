@@ -1,3 +1,5 @@
+> Actualización 2026-09-26: el backend acepta únicamente protocolo 3. La referencia actual es `firmware/porton-a001.yaml`, revisión `2026-09-26-v4.1`, suministrada por el propietario. Los archivos mserrano3 anteriores quedan como referencia histórica y no son compatibles con el backend actual. La plantilla nueva no se ha compilado ni flasheado desde esta actualización. Se conserva sin modificar su modo QA.
+
 # Relés MQTT desde la plataforma
 
 ## Configuración cotidiana

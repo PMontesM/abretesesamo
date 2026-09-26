@@ -1,3 +1,5 @@
+> Actualización 2026-09-26: el backend acepta únicamente protocolo 3. La referencia actual es `firmware/porton-a001.yaml`, revisión `2026-09-26-v4.1`, suministrada por el propietario. Los archivos mserrano3 anteriores quedan como referencia histórica y no son compatibles con el backend actual. La plantilla nueva no se ha compilado ni flasheado desde esta actualización. Se conserva sin modificar su modo QA.
+
 # Relé v2 — mserrano3 / portón Edificio
 
 Archivo: mserrano3-principal.yaml. Conserva tus valores actuales de secrets.yaml. No contiene contraseñas ni modifica el archivo original de Descargas.

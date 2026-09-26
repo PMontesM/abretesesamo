@@ -15,14 +15,14 @@ async function setup(){
   await saveRelayCredentials(env,{commandUsername:'backend-api',commandPassword:'secret-write',statusUsername:'backend-status',statusPassword:'secret-read'},actor);
   return {sqlite,env,gate:await db.getGate(env,'t','g')};
 }
-function broker({acks=['completed'],state='online',fresh=true,bootId=boot,failPublish=false,hold=false,availability,revision}={}){
-  const events=[{topic:'gate/test-relay/state',payload:state},{topic:'gate/test-relay/info',payload:JSON.stringify({protocol:2,boot_id:boot,pulse_ms:500,cooldown_ms:6000,clock_ready:true})},{topic:'gate/test-relay/health',payload:JSON.stringify({boot_id:boot,sampled_at:Math.floor(Date.now()/1000)-(fresh?0:600),rssi:-71,firmware_revision:revision})}].map(e=>({...e,type:3,retained:true}));
+function broker({acks=['completed'],state='online',fresh=true,bootId=boot,failPublish=false,hold=false,availability,revision,protocol=3,ackProtocol=protocol}={}){
+  const events=[{topic:'gate/test-relay/state',payload:state},{topic:'gate/test-relay/info',payload:JSON.stringify({protocol,boot_id:boot,pulse_ms:500,cooldown_ms:6000,clock_ready:true})},{topic:'gate/test-relay/health',payload:JSON.stringify({boot_id:boot,sampled_at:Math.floor(Date.now()/1000)-(fresh?0:600),rssi:-71,firmware_revision:revision})}].map(e=>({...e,type:3,retained:true}));
   if(availability!==undefined)events.push({type:3,topic:'gate/test-relay/availability',payload:availability,retained:true});
   let subscribed=false,pending,release;const sent=[],clients=[];
   const connect=async(user,password)=>{assert.match(password,/^secret-/);const client={
     async subscribe(topics){assert.equal(user,'backend-status');assert.ok(topics.includes('gate/test-relay/info'));subscribed=true;if(hold)await new Promise(r=>release=r);},
     async wait(matches){let i=events.findIndex(matches);if(i>=0)return events.splice(i,1)[0];throw Object.assign(Error('simulated ack timeout'),{code:'MQTT_TIMEOUT'});},
-    publish(topic,payload){assert.ok(subscribed);assert.equal(user,'backend-api');const c=JSON.parse(payload);sent.push(c);assert.equal(topic,'gate/test-relay/cmd');assert.match(c.id,/^[a-f0-9-]{36}$/);assert.equal(c.expires_at-c.issued_at,10);assert.equal(c.boot_id,boot);if(failPublish)throw Error('socket error');for(const status of acks){events.push({type:3,topic:'gate/test-relay/ack',retained:false,payload:JSON.stringify({id:c.id,boot_id:bootId,protocol:2,status,...(status==='duplicate'?{reason:'completed'}:{})})});}},
+    publish(topic,payload){assert.ok(subscribed);assert.equal(user,'backend-api');const c=JSON.parse(payload);sent.push(c);assert.equal(topic,'gate/test-relay/cmd');assert.match(c.id,/^[a-f0-9-]{36}$/);assert.equal(c.expires_at-c.issued_at,10);assert.equal(c.boot_id,boot);if(failPublish)throw Error('socket error');for(const status of acks){events.push({type:3,topic:'gate/test-relay/ack',retained:false,payload:JSON.stringify({id:c.id,boot_id:bootId,protocol:ackProtocol,status,...(status==='duplicate'?{reason:'completed'}:{})})});}},
     close(){client.closed=true;}
   };clients.push(client);return client;};
   return {connect,sent,clients,release:()=>release?.()};
@@ -112,4 +112,9 @@ for(const availability of ['online','offline',undefined,'invalid'])test('MQTT nu
   if(availability==='online'){await relayOpen(s.env,s.gate,'new-fw',opener.connect);assert.equal(opener.sent.length,1);}
   else {await assert.rejects(relayOpen(s.env,s.gate,'new-fw',opener.connect),e=>!e.uncertain);assert.equal(opener.sent.length,0);}
  }finally{s.sqlite.close();}
+});
+
+test('MQTT: solo protocolo 3; rechaza 2 antes de publicar e ignora confirmaciones de otro protocolo',async()=>{
+ const s=await setup();const old=broker({protocol:2});await assert.rejects(relayOpen(s.env,s.gate,'old',old.connect));assert.equal(old.sent.length,0);
+ const wrong=broker({ackProtocol:2});await assert.rejects(relayOpen(s.env,s.gate,'wrong-ack',wrong.connect),e=>e.uncertain===true);assert.equal(wrong.sent.length,1);
 });

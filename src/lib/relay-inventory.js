@@ -48,8 +48,8 @@ export async function discoverRelays(env,connect=MQTTClient.connect){
     }
     const found=[];
     for(const [id,data] of devices){
-      if(!data.state&&!data.availability&&data.info?.protocol!==2)continue;
-      data.observedAt=checkedAt;data.fresh=data.info?.protocol===2&&/^[a-f0-9]{32}$/.test(data.info?.boot_id)&&data.health?.boot_id===data.info.boot_id&&Number.isInteger(data.health?.sampled_at)&&data.health.sampled_at*1000>Date.now()-360000&&data.health.sampled_at*1000<=Date.now()+5000;
+      if(!data.state&&!data.availability&&data.info?.protocol!==3)continue;
+      data.observedAt=checkedAt;data.fresh=data.info?.protocol===3&&/^[a-f0-9]{32}$/.test(data.info?.boot_id)&&data.health?.boot_id===data.info.boot_id&&Number.isInteger(data.health?.sampled_at)&&data.health.sampled_at*1000>Date.now()-360000&&data.health.sampled_at*1000<=Date.now()+5000;
       found.push(observationStatement(env,id,data,config.savedAt,true),historyStatement(env,id,data));
     }
     for(let i=0;i<found.length;i+=40)await env.DB.batch(found.slice(i,i+40));

@@ -1,0 +1,400 @@
+substitutions:
+  # Cambia estos dos valores por dispositivo:
+  device_name: "porton-a001"
+  friendly_name: "Portón A001"
+  firmware_revision: "2026-09-26-v4.1"
+  relay_pulse_ms: "500"
+  relay_cooldown_ms: "6000"
+  relay_inverted: "false"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: 700
+    then:
+      - output.turn_off: relay_output
+      - lambda: |-
+          char token[33];
+          snprintf(token, sizeof(token), "%08x%08x%08x%08x",
+                   (unsigned) random_uint32(), (unsigned) random_uint32(),
+                   (unsigned) random_uint32(), (unsigned) random_uint32());
+          id(boot_id) = token;
+  on_shutdown:
+    then:
+      - output.turn_off: relay_output
+      - logger.log:
+          format: "Apagado controlado del firmware; salida del rele desactivada"
+          level: INFO
+
+esp32:
+  board: seeed_xiao_esp32c6
+  variant: esp32c6
+  framework:
+    type: esp-idf
+
+safe_mode:
+
+logger:
+  level: INFO
+
+debug:
+  update_interval: 30s
+
+improv_serial:
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      id: last_reset_reason
+      name: "Reset Reason"
+  - platform: template
+    id: mqtt_status
+    name: "MQTT Status"
+    update_interval: 5s
+    lambda: |-
+      if (!id(relay_wifi).is_connected()) return {"wifi_down"};
+      if (!id(mqtt_client).is_connected()) return {"broker_down"};
+      if (!id(clock_utc).now().is_valid()) return {"time_not_synced"};
+      return {"ready"};
+  - platform: template
+    id: device_id_sensor
+    name: "Device ID (MAC)"
+    update_interval: 300s
+    lambda: |-
+      std::string mac = get_mac_address();
+      return mac;
+  - platform: template
+    id: device_name_sensor
+    name: "Device Name"
+    update_interval: 300s
+    lambda: 'return {"${device_name}"};'
+  - platform: template
+    id: boot_id_sensor
+    name: "Boot ID"
+    update_interval: 30s
+    lambda: 'return {id(boot_id)};'
+  - platform: template
+    id: gate_state_local
+    name: "Gate State"
+    update_interval: 5s
+    lambda: |-
+      if (id(pulse_active)) return {"opening"};
+      if (id(relay_busy)) return {"cooldown"};
+      if (!id(clock_utc).now().is_valid()) return {"initializing"};
+      return {"online"};
+  - platform: template
+    id: fw_rev_sensor
+    name: "Firmware"
+    update_interval: 300s
+    lambda: 'return {"${firmware_revision}"};'
+
+switch:
+  - platform: template
+    name: "QA Mode"
+    id: qa_mode
+    icon: "mdi:test-tube"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+button:
+  - platform: template
+    name: "Test Relay (QA)"
+    id: test_relay_button
+    icon: "mdi:gesture-tap-button"
+    on_press:
+      - if:
+          condition:
+            and:
+              - lambda: 'return id(qa_mode).state;'
+              - lambda: 'return !id(relay_busy);'
+          then:
+            - lambda: 'id(relay_busy) = true;'
+            - output.turn_on: relay_output
+            - delay: 200ms
+            - output.turn_off: relay_output
+            - lambda: 'id(relay_busy) = false;'
+          else:
+            - logger.log:
+                format: "QA: modo QA apagado o relay ocupado"
+                level: WARN
+
+  - platform: restart
+    name: "Reiniciar dispositivo"
+    id: restart_button
+    icon: "mdi:restart"
+
+web_server:
+  port: 80
+  version: 3
+  auth:
+    username: !secret web_server_user
+    password: !secret web_server_password
+    type: digest
+  include_internal: false
+  log: false
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  id: relay_wifi
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  ap:
+    ssid: "${device_name}-setup"
+    password: !secret ap_password
+captive_portal:
+
+globals:
+  - id: boot_id
+    type: std::string
+    initial_value: '""'
+    restore_value: false
+  - id: recent_ids
+    type: 'std::vector<std::string>'
+    initial_value: 'std::vector<std::string>{}'
+    restore_value: false
+  - id: recent_results
+    type: 'std::vector<std::string>'
+    initial_value: 'std::vector<std::string>{}'
+    restore_value: false
+  - id: relay_busy
+    type: bool
+    initial_value: 'false'
+  - id: pulse_active
+    type: bool
+    initial_value: 'false'
+
+output:
+  - platform: gpio
+    id: connection_led
+    pin:
+      number: GPIO15
+      inverted: true
+  - platform: gpio
+    id: relay_output
+    pin:
+      number: GPIO1
+      inverted: ${relay_inverted}
+
+sensor:
+  - platform: wifi_signal
+    id: wifi_signal_sensor
+    internal: true
+    update_interval: 60s
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+  - platform: debug
+    free:
+      name: "Free Heap"
+    loop_time:
+      name: "Loop Time"
+
+time:
+  - platform: sntp
+    id: clock_utc
+    timezone: UTC
+    servers:
+      - time.cloudflare.com
+      - pool.ntp.org
+    on_time_sync:
+      then:
+        - script.execute: publish_status
+
+mqtt:
+  id: mqtt_client
+  broker: !secret mqtt_broker
+  port: 8883
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  client_id: ${device_name}
+  certificate_authority: !secret mqtt_ca_cert
+  clean_session: true
+  discovery: false
+  discover_ip: false
+  log_topic:
+    topic: gate/${device_name}/log
+    level: WARN
+    retain: false
+  topic_prefix: null
+  reboot_timeout: 0s
+  keepalive: 60s
+  idf_send_async: true
+
+  birth_message:
+    topic: gate/${device_name}/availability
+    payload: online
+    retain: true
+  will_message:
+    topic: gate/${device_name}/availability
+    payload: offline
+    retain: true
+  shutdown_message:
+    topic: gate/${device_name}/availability
+    payload: offline
+    retain: true
+
+  on_connect:
+    then:
+      - script.execute: publish_status
+
+  on_json_message:
+    - topic: gate/${device_name}/cmd
+      qos: 1
+      then:
+        - lambda: |-
+            if (!x["id"].is<const char *>()) return;
+            const std::string command_id = x["id"].as<std::string>();
+            if (command_id.size() != 36) return;
+            for (size_t i = 0; i < command_id.size(); ++i) {
+              const char c = command_id[i];
+              const bool hyphen = i == 8 || i == 13 || i == 18 || i == 23;
+              if (hyphen ? c != '-' : !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return;
+            }
+            auto ack = [command_id](const char *status, const char *reason) {
+              const std::string st = status;
+              const std::string rs = reason;
+              id(mqtt_client).publish_json("gate/${device_name}/ack", [&](JsonObject root) {
+                root["id"] = command_id;
+                root["boot_id"] = id(boot_id);
+                root["status"] = st;
+                root["reason"] = rs;
+                root["protocol"] = 3;
+              }, 1, false);
+            };
+            if (!x["action"].is<const char *>() || x["action"].as<std::string>() != "OPEN") {
+              ack("rejected", "invalid_action"); return;
+            }
+            if (!x["boot_id"].is<const char *>() || x["boot_id"].as<std::string>() != id(boot_id)) {
+              ack("rejected", "boot_changed"); return;
+            }
+            for (size_t i = 0; i < id(recent_ids).size(); ++i) {
+              if (id(recent_ids)[i] == command_id) {
+                ack("duplicate", id(recent_results)[i].c_str()); return;
+              }
+            }
+            const auto now = id(clock_utc).now();
+            if (!now.is_valid()) { ack("rejected", "clock_not_ready"); return; }
+            if (!x["issued_at"].is<int64_t>() || !x["expires_at"].is<int64_t>()) {
+              ack("rejected", "invalid_time"); return;
+            }
+            const int64_t issued = x["issued_at"].as<int64_t>();
+            const int64_t expires = x["expires_at"].as<int64_t>();
+            const int64_t current = now.timestamp;
+            if (issued <= 0 || expires <= issued || expires - issued > 60 || issued > current + 30 || expires <= current) {
+              ack("rejected", "expired_or_invalid_time"); return;
+            }
+            if (id(relay_busy)) { ack("rejected", "busy"); return; }
+            if (id(recent_ids).size() >= 32) {
+              id(recent_ids).erase(id(recent_ids).begin());
+              id(recent_results).erase(id(recent_results).begin());
+            }
+            id(recent_ids).push_back(command_id);
+            id(recent_results).push_back("accepted");
+            id(relay_busy) = true;
+            ack("accepted", "");
+            id(pulse_relay).execute(command_id);
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          static bool was_ready = false;
+          static uint16_t startup_ticks = 0;
+          static uint8_t previous_mode = 255;
+          static uint8_t tick = 0;
+          static bool led_on = false;
+          if (startup_ticks < 600) ++startup_ticks;
+          const bool connected = id(relay_wifi).is_connected() && id(mqtt_client).is_connected();
+          const bool ready = connected && id(clock_utc).now().is_valid();
+          if (ready) was_ready = true;
+          const uint8_t mode = ready ? 1 : ((!was_ready && startup_ticks < 600) ? 0 : 2);
+          if (mode != previous_mode) { tick = 0; previous_mode = mode; }
+          const uint8_t period = mode == 1 ? 1 : (mode == 0 ? 10 : 4);
+          const uint8_t on_ticks = mode == 1 ? 1 : (mode == 0 ? 5 : 2);
+          const bool want_on = tick < on_ticks;
+          if (want_on != led_on) {
+            if (want_on) id(connection_led).turn_on(); else id(connection_led).turn_off();
+            led_on = want_on;
+          }
+          tick = (tick + 1) % period;
+  - interval: 5min
+    then:
+      - script.execute: publish_status
+
+script:
+  - id: publish_status
+    mode: restart
+    then:
+      - if:
+          condition:
+            mqtt.connected:
+          then:
+            - mqtt.publish:
+                topic: gate/${device_name}/state
+                retain: true
+                payload: !lambda |-
+                  if (id(pulse_active)) return std::string("opening");
+                  if (id(relay_busy)) return std::string("cooldown");
+                  return std::string(id(clock_utc).now().is_valid() ? "online" : "initializing");
+            - mqtt.publish_json:
+                topic: gate/${device_name}/info
+                retain: true
+                payload: |-
+                  root["protocol"] = 3;
+                  root["availability_topic"] = true;
+                  root["device_id"] = get_mac_address();
+                  root["device_name"] = "${device_name}";
+                  root["boot_id"] = id(boot_id);
+                  root["pulse_ms"] = ${relay_pulse_ms};
+                  root["cooldown_ms"] = ${relay_cooldown_ms};
+                  root["clock_ready"] = id(clock_utc).now().is_valid();
+            - mqtt.publish_json:
+                topic: gate/${device_name}/health
+                retain: true
+                payload: |-
+                  if (std::isfinite(id(wifi_signal_sensor).state)) root["rssi"] = (int) id(wifi_signal_sensor).state;
+                  root["uptime_s"] = (uint32_t) (millis() / 1000);
+                  root["boot_id"] = id(boot_id);
+                  root["reset_reason"] = id(last_reset_reason).has_state() ? id(last_reset_reason).state : "unknown";
+                  root["firmware_revision"] = "${firmware_revision}";
+                  root["sampled_at"] = id(clock_utc).now().is_valid() ? id(clock_utc).now().timestamp : 0;
+
+  - id: pulse_relay
+    mode: single
+    parameters:
+      command_id: string
+    then:
+      - lambda: |-
+          static_assert(${relay_pulse_ms} >= 100 && ${relay_pulse_ms} <= 2000, "Pulse must be 100..2000 ms");
+          static_assert(${relay_cooldown_ms} >= 6000, "Cooldown must be at least 6000 ms");
+          id(pulse_active) = true;
+      - mqtt.publish:
+          topic: gate/${device_name}/state
+          payload: opening
+          retain: true
+      - output.turn_on: relay_output
+      - delay: ${relay_pulse_ms}ms
+      - output.turn_off: relay_output
+      - lambda: |-
+          id(pulse_active) = false;
+          for (size_t i = 0; i < id(recent_ids).size(); ++i)
+            if (id(recent_ids)[i] == command_id) id(recent_results)[i] = "completed";
+      - mqtt.publish_json:
+          topic: gate/${device_name}/ack
+          qos: 1
+          retain: false
+          payload: |-
+            root["id"] = command_id;
+            root["boot_id"] = id(boot_id);
+            root["protocol"] = 3;
+            root["status"] = "completed";
+            root["pulse_ms"] = ${relay_pulse_ms};
+      - script.execute: publish_status
+      - delay: ${relay_cooldown_ms}ms
+      - lambda: 'id(relay_busy) = false;'
+      - script.execute: publish_status
