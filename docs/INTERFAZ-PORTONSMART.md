@@ -6,7 +6,7 @@ Panel y Mi Acceso parten de los HTML originales conservados en `frontend/referen
 
 - Panel: órdenes de hoy y ayer por hora, pases activos, vencimientos, historial con filtros y CSV, consultas de conexión y avisos basados en esas consultas.
 - Mi Acceso: mantener pulsado 400 ms, alternativa con confirmación, animación del icono, pases y actividad. El resultado confirma la orden comunicada por el dispositivo, no el movimiento físico del portón.
-- Pases: tipos Con vigencia, Un solo uso (visita de diez minutos) y Permanente; un código para varios accesos autorizados; vigencias de 30 minutos, 2, 6 o 24 horas; modos reutilizable, visita y sin vencimiento. Compartir por WhatsApp, copiar y revocar.
+- Pases: tipos Con vigencia, Un solo uso (visita de diez minutos) y Permanente; un código para varios accesos autorizados; vigencias de 1 día, 7 días u otra cantidad de 1 a 30 días. Compartir por WhatsApp, copiar y revocar.
 - Las visitas comparten diez minutos desde la primera orden satisfactoria, incluso entre varios portones. El visitante elige el acceso y confirma antes del primer uso.
 - Extensión de 30 minutos para reutilizables vigentes que vencen en diez minutos, hasta siete días desde su creación. No modifica visitas ni recupera pases revocados o vencidos.
 - Usuarios, lista completa de códigos, superadministración e ingreso de visitantes conservan sus funciones y la marca PortonSmart.
@@ -33,7 +33,7 @@ Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. 
 
 ## Opciones integradas en el diseño nuevo
 
-El formulario inicia en Una visita e incluye Hoy, Mañana y fecha/hora personalizada, también para pases multiacceso. Copiar entrega solo el código; WhatsApp comparte el detalle con enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.
+El formulario inicia en Un solo uso, con siete días para comenzar y diez minutos después de la primera orden confirmada, también para pases multiacceso. Copiar entrega solo el código; WhatsApp comparte el detalle con enlace e instrucciones. El historial del residente incorpora búsqueda, filtros por acceso y resultado y exportación CSV; conserva el límite de 200 registros y retención de 30 días. Configuración del administrador abre su propio formulario de contacto de ayuda. MQTT e inventario siguen restringidos al superadministrador.
 
 ## Superadministración
 
@@ -47,10 +47,23 @@ No requiere migración de base de datos ni cambios de firmware.
 
 ## Recorrido unificado de visitantes y residentes
 
-Todos mis códigos permanece dentro de Mi Acceso, con consulta paginada, filtro de estado y búsqueda por código exacto. El formulario ofrece Con vigencia, Un solo uso (una visita con diez minutos de reintentos) y Permanente; oculta las fechas para el permanente. Al crear se muestra una tarjeta con código, accesos, vigencia y acciones de copiar solo el código o compartir instrucciones por WhatsApp.
+Los códigos del residente se consultan en la sección Códigos activos de Mi Acceso. El formulario ofrece Con vigencia, Un solo uso (una visita con diez minutos de reintentos) y Permanente; oculta las fechas para el permanente. Al crear se muestra una tarjeta con código, accesos, vigencia y acciones de copiar solo el código o compartir instrucciones por WhatsApp.
 
 La apertura del residente usa pulsación de 400 ms, sin selección de texto ni menú de pulsación prolongada en el control; cancelar el gesto detiene el envío. La alternativa abre una confirmación con el diseño de PortonSmart. En visitantes la animación está dentro del botón y el verde indica Orden confirmada, sin una segunda leyenda de éxito. Permanecen los errores y la cuenta regresiva de la visita. Una confirmación no demuestra movimiento físico sin sensores.
 
 ## Simplificación del panel de residente
 
 Se elimina la sección y enlace duplicados Todos mis códigos. Cerrar sesión aparece con texto en el panel lateral, ajustado a la altura visible del celular. Un solo uso permite comenzar durante siete días y conserva diez minutos desde el primer uso confirmado, sin selector de fecha. Con vigencia ofrece 1 día, 7 días u otra cantidad entera de 1 a 30. Permanente no tiene vencimiento. El historial muestra el código usado o Apertura desde el panel cuando no hubo código. Los códigos existentes conservan sus fechas.
+
+
+## Panel de administrador del edificio unificado
+
+La navegación usa una sola interfaz Alpine: Inicio, Portones, Residentes, Códigos, Historial y Configuración. Los enlaces antiguos de administración (`?view=users`, `codes`, `passes`, `logs` y `gates`) abren la sección correspondiente del mismo panel. Cerrar sesión está visible en el menú lateral móvil.
+
+- Portones conserva pulsación, confirmación visual y animación; comprobación de conexión e información técnica se presentan en la misma tarjeta, con detalles desplegables. Las estadísticas por hora quedan plegadas al inicio.
+- Residentes conserva alta, permisos, cambio de contraseña, eliminación y bienvenida por WhatsApp. Compartir una cuenta existente no revela su contraseña. Quitar accesos revoca los códigos vinculados; cambiar contraseña invalida las sesiones anteriores. Eliminar y revocar requieren un diálogo con el estilo del panel.
+- Códigos usa el formulario del residente y la tarjeta de resultado para copiar o compartir. La lista permite filtrar por residente, portón, estado, código o referencia. Los filtros se aplican en el servidor antes de paginar, incluyendo accesos secundarios de un pase. Cada página contiene hasta 100 códigos y se amplía con Cargar más códigos. Se conserva el aislamiento por edificio y dueño.
+- Historial muestra el portón, usuario y código, distingue los resultados, ofrece filtros y exportación CSV de los últimos 200 registros disponibles.
+- Configuración reúne el contacto de ayuda; asignación de relés y revisión de órdenes siguen en superadministración.
+
+Esta actualización no necesita migraciones ni cambios del firmware. No agrega sondeos de red automáticos. Pruebas locales con dispositivos simulados cubren navegación, alta, permisos, contraseña, eliminación, filtros, paginación y aislamiento de datos.

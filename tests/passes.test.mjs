@@ -12,3 +12,17 @@ test('visita multiacceso comparte los mismos diez minutos entre portones',async(
 test('fecha personalizada conserva el límite y rechaza fechas pasadas o fuera de rango',async()=>{const {sqlite,env,user,g1}=await setup();const expiresAt=Date.now()+3*86400000;const {code}=await createPass(env,user,{label:'Programada',mode:'visit',expiresAt,gateIds:[g1]});const row=sqlite.prepare('SELECT expires_at,visit_mode FROM codes WHERE code=?').get(code);assert.equal(row.expires_at,expiresAt);assert.equal(row.visit_mode,1);for(const invalid of [Date.now()-1000,Date.now()+3651*86400000,'mañana'])await assert.rejects(createPass(env,user,{label:'Inválida',mode:'visit',expiresAt:invalid,gateIds:[g1]}));});
 
 test('vigencias en días: visita inicia en siete días y reutilizable admite de uno a treinta',async()=>{const {sqlite,env,user,g1}=await setup();const visit=await createPass(env,user,{label:'Visita',mode:'visit',gateIds:[g1]});let row=sqlite.prepare('SELECT * FROM codes WHERE code=?').get(visit.code);assert.equal(row.expires_at-row.created_at,7*86400000);for(const days of [1,7,30]){const p=await createPass(env,user,{label:'Temporal',mode:'repeat',days,gateIds:[g1]});row=sqlite.prepare('SELECT * FROM codes WHERE code=?').get(p.code);assert.equal(row.expires_at-row.created_at,days*86400000);}for(const days of [0,31,1.5])await assert.rejects(createPass(env,user,{label:'Inválido',mode:'repeat',days,gateIds:[g1]}));});
+
+test('filtros de administración antes de paginar: dueño, acceso secundario, búsqueda y aislamiento',async()=>{
+ const {sqlite,env,user,tenant,g1,g2}=await setup(),master=sqlite.prepare("SELECT * FROM users WHERE role='master'").get();
+ const target=await createPass(env,user,{label:'Entrega especial',mode:'unlimited',gateIds:[g1,g2]});
+ for(let i=0;i<105;i++)sqlite.prepare('INSERT INTO codes(code,tenant_id,gate_id,owner_id,owner,label,created_at) VALUES(?,?,?,?,?,?,?)').run('fill-'+i,tenant,g1,master.id,master.username,'Otro',Date.now()+i+1000);
+ assert.equal((await listPasses(env,master,{status:''})).length,100);
+ assert.equal((await listPasses(env,master,{status:'',page:1})).length,6);
+ for(const options of [{ownerId:user.id},{gateId:g2},{query:'ENTREGA especial'},{query:target.code},{query:user.username}])assert.deepEqual((await listPasses(env,master,options)).map(p=>p.code),[target.code]);
+ assert.equal((await listPasses(env,user,{ownerId:master.id,status:''})).length,0);
+ assert.equal((await listPasses(env,master,{ownerId:user.id,gateId:'foreign'})).length,0);
+ const other=await db.createTenant(env,{slug:'beta',name:'Beta',gateName:'Otro',triggerUrl:'https://device.test/beta',masterUsername:'admin',masterSecret:'test-password'}),otherMaster=sqlite.prepare('SELECT * FROM users WHERE tenant_id=?').get(other);
+ assert.equal((await listPasses(env,otherMaster,{query:target.code,ownerId:user.id,gateId:g2})).length,0);
+ await assert.rejects(listPasses(env,master,{query:'x'.repeat(101)}));
+});
