@@ -1,3 +1,4 @@
+import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {checkTurnstile,turnstileConfig} from './lib/turnstile.js';
 import {createPass,listPasses,extendPass,visitorGates} from './lib/passes.js';
 import {panelData} from './lib/panel.js';
@@ -106,10 +107,10 @@ async function route(request,env,ctx) {
     return json({ok:false,error:'Tu sesión terminó. Vuelve a iniciar sesión.'},401);
   }
   if(rest==='/admin'&&request.method==='GET')return html(getAdminHTML(tenant,user,url.searchParams.get('view')));
-  if(rest==='/admin/panel'&&request.method==='GET')return json({ok:true,...await panelData(env,user,url.searchParams.get('offset'))});
-  if(rest==='/admin/passes'&&request.method==='GET')return json({ok:true,passes:await listPasses(env,user,Object.fromEntries(url.searchParams))});
+  if(rest==='/admin/panel'&&request.method==='GET')return json({ok:true,...await protectCodes(env,await panelData(env,user,url.searchParams.get('offset')),user,tenant.id)});
+  if(rest==='/admin/passes'&&request.method==='GET')return json({ok:true,passes:await protectCodes(env,await listPasses(env,user,Object.fromEntries(url.searchParams)),user,tenant.id)});
   if(rest==='/admin/passes'&&request.method==='POST')return json({ok:true,...await createPass(env,user,await jsonBody(request))});
-  if(rest==='/admin/passes/extend'&&request.method==='POST'){await extendPass(env,user,await jsonBody(request));return json({ok:true});}
+  if(rest==='/admin/passes/extend'&&request.method==='POST'){await extendPass(env,user,await resolveCodeBody(env,await jsonBody(request),user,tenant.id));return json({ok:true});}
   if(rest==='/admin/connection'&&request.method==='POST'){if(user.role!=='master')return json({ok:false,error:'Solo administración puede consultar dispositivos'},403);if(!await takeAttempt(env,'connection:'+user.tenant_id,6))return json({ok:false,error:'Espera cinco minutos antes de consultar de nuevo'},429);const gate=await db.requireGate(env,user,(await jsonBody(request)).gateId);if(gate.trigger_type!=='mqtt')return json({ok:true,connection:null});return json({ok:true,connection:await relayStatus(env,gate)});}
   if(rest==='/admin/dashboard'&&request.method==='GET')return json({ok:true,...await db.dashboard(env,user)});
   if(rest==='/admin/logout'&&request.method==='POST'){
@@ -129,11 +130,11 @@ async function route(request,env,ctx) {
   }
   if(rest==='/admin/support'&&request.method==='POST'){if(user.role!=='master')return json({ok:false,error:'Solo el administrador puede cambiar el contacto.'},403);const b=await jsonBody(request);return json({ok:true,phone:await db.setSupport(env,tenant.id,b.phone,user)});}
   if(rest==='/admin/create-code'&&request.method==='POST')return json({ok:true,code:await db.createCode(env,user,await jsonBody(request))});
-  if(rest==='/admin/codes'&&request.method==='GET')return json({ok:true,codes:await db.listCodes(env,tenant.id,user,Object.fromEntries(url.searchParams))});
+  if(rest==='/admin/codes'&&request.method==='GET')return json({ok:true,codes:await protectCodes(env,await db.listCodes(env,tenant.id,user,Object.fromEntries(url.searchParams)),user,tenant.id)});
   if(rest==='/admin/revoke-code'&&request.method==='POST'){
-    const b=await jsonBody(request);await db.revokeCode(env,tenant.id,b.code,user,user);return json({ok:true});
+    const b=await resolveCodeBody(env,await jsonBody(request),user,tenant.id);await db.revokeCode(env,tenant.id,b.code,user,user);return json({ok:true});
   }
-  if(rest==='/admin/logs'&&request.method==='GET')return json({ok:true,...await db.listLogs(env,tenant.id,user)});
+  if(rest==='/admin/logs'&&request.method==='GET')return json({ok:true,...await protectCodes(env,await db.listLogs(env,tenant.id,user),user,tenant.id)});
   if(rest.startsWith('/admin/users')||rest==='/admin/create-user'||rest==='/admin/delete-user'){
     if(user.role!=='master')return json({ok:false,error:'Solo el administrador principal gestiona usuarios'},403);
     if(rest==='/admin/users'&&request.method==='GET')return json({ok:true,users:await db.listUsers(env,tenant.id)});

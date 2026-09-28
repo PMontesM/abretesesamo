@@ -21,6 +21,8 @@ async function req(path,body,c=cookie){return worker.fetch(new Request('https://
 const json=async r=>{const d=await r.json();assert.equal(r.status,200,JSON.stringify(d));return d;};
 const tenant={id:'a',slug:'alpha',name:'Alpha'};
 let code;
+async function managementRef(code){const row=sqlite.prepare('SELECT label FROM codes WHERE tenant_id=? AND code=?').get('a',code);const d=await json(await req('/platform/api/codes?tenantId=a&status=',undefined,platformCookie));return d.codes.find(c=>c.label===row.label).codeRef;}
+
 test('migración conserva permisos actuales y revoca códigos sin propietario',()=>{
  sqlite.exec(`INSERT INTO tenants VALUES('a','alpha','Alpha',1,'active'); INSERT INTO tenants VALUES('b','beta','Beta',1,'active');
  INSERT INTO gates VALUES('g1','a','Principal','webhook','{"url":"https://device.test/one"}',1);
@@ -68,7 +70,7 @@ test('fallo del dispositivo conserva código en revisión y bloquea reintento au
  failure=true;assert.equal((await req('/t/alpha/api/open',{code:c},null)).status,502);failure=false;
  assert.equal(sqlite.prepare('SELECT status FROM codes WHERE code=?').get(c).status,'uncertain');
  calls=[];assert.equal((await req('/t/alpha/api/open',{code:c},null)).status,403);assert.equal(calls.length,0);
- await json(await req('/platform/api/codes/resolve',{tenantId:'a',code:c,action:'retry'},platformCookie));
+ await json(await req('/platform/api/codes/resolve',{tenantId:'a',codeRef:await managementRef(c),action:'retry'},platformCookie));
  await json(await req('/t/alpha/api/open',{code:c},null));
 });
 test('permisos restringen apertura, creación y códigos existentes',async()=>{
@@ -129,11 +131,11 @@ test('portones nuevos no conceden permisos implícitos a residentes',async()=>{
 test('solicitudes pendientes no se liberan antes de dos minutos y se recuperan para revisión',async()=>{
  const d=await json(await req('/t/alpha/admin/create-code',{gateId:'g1',label:'Interrupción',days:1,singleUse:true}));
  const row=await data.claimCode(env,'a',d.code.code);assert.ok(row);
- assert.equal((await req('/platform/api/codes/resolve',{tenantId:'a',code:row.code,action:'retry'},platformCookie)).status,400);
+ assert.equal((await req('/platform/api/codes/resolve',{tenantId:'a',codeRef:await managementRef(row.code),action:'retry'},platformCookie)).status,400);
  sqlite.prepare('UPDATE codes SET claimed_at=? WHERE code=?').run(Date.now()-130000,row.code);
  await data.cleanup(env);
  assert.equal(sqlite.prepare('SELECT status FROM codes WHERE code=?').get(row.code).status,'uncertain');
- await json(await req('/platform/api/codes/resolve',{tenantId:'a',code:row.code,action:'used'},platformCookie));
+ await json(await req('/platform/api/codes/resolve',{tenantId:'a',codeRef:await managementRef(row.code),action:'used'},platformCookie));
 });
 test('códigos vencidos, edificios suspendidos y sesiones cerradas bloquean aperturas',async()=>{
  const d=await json(await req('/t/alpha/admin/create-code',{gateId:'g1',label:'Vencer',days:1,singleUse:false}));

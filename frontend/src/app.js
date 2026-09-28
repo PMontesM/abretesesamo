@@ -6,7 +6,7 @@ import {portonApp} from './presentation.js';
 import {api,base,config,openGate,csvDownload,infoDialog,date,outcome} from './api.js';
 const merge=(target,...parts)=>{for(const p of parts)Object.defineProperties(target,Object.getOwnPropertyDescriptors(p));return target;};
 const types={Visita:'fa-solid fa-user',Entrega:'fa-solid fa-motorcycle',Servicio:'fa-solid fa-broom'};
-const pass=c=>({id:c.code,code:c.code,name:c.label,owner:c.owner,ownerId:c.owner_id,type:c.visit_mode||c.single_use?'Un solo uso':c.expires_at?'Con vigencia':'Permanente',icon:types[c.category]||types.Visita,access:c.access,createdAt:c.visit_started_at||c.created_at,expiresAt:c.expires_at,visit:!!c.visit_mode,single:!!c.single_use,started:c.visit_started_at,status:c.status});
+const pass=c=>({id:c.codeRef||c.code,codeRef:c.codeRef,codeMasked:!!c.codeMasked,code:c.code,name:c.label,owner:c.owner,ownerId:c.owner_id,type:c.visit_mode||c.single_use?'Un solo uso':c.expires_at?'Con vigencia':'Permanente',icon:types[c.category]||types.Visita,access:c.access,createdAt:c.visit_started_at||c.created_at,expiresAt:c.expires_at,visit:!!c.visit_mode,single:!!c.single_use,started:c.visit_started_at,status:c.status});
 const common={
  dashboardUrl:base+'/admin',legacyUrl:base+'/admin?view=codes',usersUrl:base+'/admin?view=users',tenant:config.tenant,user:config.user,error:'',loading:true,busy:false,now:Date.now(),types,typeNames:Object.keys(types),
  get initials(){return this.user.username.slice(0,2).toUpperCase();},

@@ -67,3 +67,10 @@ La navegación usa una sola interfaz Alpine: Inicio, Portones, Residentes, Códi
 - Configuración reúne el contacto de ayuda; asignación de relés y revisión de órdenes siguen en superadministración.
 
 Esta actualización no necesita migraciones ni cambios del firmware. No agrega sondeos de red automáticos. Pruebas locales con dispositivos simulados cubren navegación, alta, permisos, contraseña, eliminación, filtros, paginación y aislamiento de datos.
+
+
+## Privacidad de códigos ajenos
+
+El administrador ve completos solo sus propios códigos. Los códigos de residentes se muestran como `12••56`, sin copiar ni compartir. El superadministrador ve todos los códigos enmascarados. La regla también cubre historial, exportación y detalles estructurados de auditoría. El backend sustituye el código antes de enviarlo al navegador y retira tokens internos de creación y reserva.
+
+Revocar y resolver usan referencias cifradas, vinculadas a la cuenta y al edificio; no exponen la credencial de acceso ni requieren migración. La búsqueda de códigos ajenos utiliza la representación visible, no los dígitos ocultos. Mostrar cuatro dígitos deja cien combinaciones posibles: este formato no reemplaza los límites de intentos del acceso público.

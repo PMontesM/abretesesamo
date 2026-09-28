@@ -19,7 +19,7 @@ test('filtros de administración antes de paginar: dueño, acceso secundario, b�
  for(let i=0;i<105;i++)sqlite.prepare('INSERT INTO codes(code,tenant_id,gate_id,owner_id,owner,label,created_at) VALUES(?,?,?,?,?,?,?)').run('fill-'+i,tenant,g1,master.id,master.username,'Otro',Date.now()+i+1000);
  assert.equal((await listPasses(env,master,{status:''})).length,100);
  assert.equal((await listPasses(env,master,{status:'',page:1})).length,6);
- for(const options of [{ownerId:user.id},{gateId:g2},{query:'ENTREGA especial'},{query:target.code},{query:user.username}])assert.deepEqual((await listPasses(env,master,options)).map(p=>p.code),[target.code]);
+ for(const options of [{ownerId:user.id},{gateId:g2},{query:'ENTREGA especial'},{query:target.code.slice(0,2)+'••'+target.code.slice(-2)},{query:user.username}])assert.deepEqual((await listPasses(env,master,options)).map(p=>p.code),[target.code]);
  assert.equal((await listPasses(env,user,{ownerId:master.id,status:''})).length,0);
  assert.equal((await listPasses(env,master,{ownerId:user.id,gateId:'foreign'})).length,0);
  const other=await db.createTenant(env,{slug:'beta',name:'Beta',gateName:'Otro',triggerUrl:'https://device.test/beta',masterUsername:'admin',masterSecret:'test-password'}),otherMaster=sqlite.prepare('SELECT * FROM users WHERE tenant_id=?').get(other);

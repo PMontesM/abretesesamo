@@ -146,7 +146,7 @@
                   </div>
 
                   <div class="border-t border-material-border grid" :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'">
-                    <button @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar código">
+                    <button x-show="!p.codeMasked" @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar código">
                       <i class="fa-regular fa-copy" aria-hidden="true"></i>Copiar</button>
                     <button x-show="canShare(p)" @click="share(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Compartir pase">
                       <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Compartir</button>

@@ -62,7 +62,7 @@ test('A07: creación aplica límite de frecuencia por usuario',async()=>{
  assert.equal(s.sqlite.prepare('SELECT COUNT(*) AS n FROM login_attempts').get().n,1);}finally{s.sqlite.close();}
 });
 test('A08: revocar desde edificio deja auditoría con actor',async()=>{
- const s=await setup();try{const c=await s.code();assert.equal((await s.req('/t/audit/admin/revoke-code',{code:c.code})).status,200);assert.equal(s.sqlite.prepare('SELECT COUNT(*) AS n FROM platform_audit_log').get().n,1);}finally{s.sqlite.close();}
+ const s=await setup();try{const c=await s.code();assert.equal((await s.req('/t/audit/admin/revoke-code',{codeRef:(await (await s.req('/t/audit/admin/codes')).json()).codes[0].codeRef})).status,200);assert.equal(s.sqlite.prepare('SELECT COUNT(*) AS n FROM platform_audit_log').get().n,1);}finally{s.sqlite.close();}
 });
 test('apertura directa no envía nada si falla la reserva y deduplica resultados confirmados',async()=>{
  const s=await setup();try{let calls=0;globalThis.fetch=async()=>{calls++;return new Response('ok');};
@@ -89,7 +89,7 @@ test('cuota atómica evita superar 200 códigos vigentes ante solicitudes concur
 });
 test('fallo de auditoría revierte también revocación desde el panel de edificio',async()=>{
  const s=await setup();try{const c=await s.code();s.sqlite.exec("CREATE TRIGGER fail_audit BEFORE INSERT ON platform_audit_log BEGIN SELECT RAISE(FAIL,'injected'); END;");
- assert.equal((await s.req('/t/audit/admin/revoke-code',{code:c.code})).status,500);assert.equal(s.sqlite.prepare('SELECT status FROM codes WHERE code=?').get(c.code).status,'active');
+ assert.equal((await s.req('/t/audit/admin/revoke-code',{codeRef:(await (await s.req('/t/audit/admin/codes')).json()).codes[0].codeRef})).status,500);assert.equal(s.sqlite.prepare('SELECT status FROM codes WHERE code=?').get(c.code).status,'active');
  }finally{s.sqlite.close();}
 });
 test('cambiar solo nombre conserva acceso y migración aditiva puede repetirse',async()=>{

@@ -1,3 +1,4 @@
+import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {turnstileConfig} from './lib/turnstile.js';
 import {superPanel} from './lib/super-panel.js';
 import {relayStatus,pendingRelays,resolveRelay,RelayError} from './lib/relay.js';
@@ -23,6 +24,7 @@ export async function handlePlatform(request,env,ctx,url){
   }
   const admin=await verifySession(request,env,null,true);
   if(!admin)return Response.json({ok:false,error:'Tu sesión terminó. Vuelve a iniciar sesión.'},{status:401});
+  const json=async body=>Response.json({ok:true,...await protectCodes(env,body,admin,url.searchParams.get('tenantId'))});
   if(rest==='/admin'&&request.method==='GET')return html(getPlatformAdminHTML(admin,url.searchParams.get('view'),url.searchParams.get('tenantId')));
   if(rest==='/logout'&&request.method==='POST'){
     await env.DB.prepare('UPDATE platform_admins SET session_version=session_version+1 WHERE id=?').bind(admin.id).run();
@@ -101,9 +103,9 @@ export async function handlePlatform(request,env,ctx,url){
     }else if(rest==='/api/reset-secret'){
       await db.resetSecret(env,tenantId,b.userId,b.secret,admin);detail.userId=b.userId;
     }else if(rest==='/api/codes/revoke'){
-      await db.revokeCode(env,tenantId,b.code,null,admin);detail.code=b.code;
+      const resolved=await resolveCodeBody(env,b,admin,tenantId);await db.revokeCode(env,tenantId,resolved.code,null,admin);
     }else if(rest==='/api/codes/resolve'){
-      await db.resolveCode(env,tenantId,b.code,b.action,admin);detail.code=b.code;detail.resolution=b.action;
+      const resolved=await resolveCodeBody(env,b,admin,tenantId);await db.resolveCode(env,tenantId,resolved.code,b.action,admin);detail.resolution=b.action;
     }else return Response.json({ok:false,error:'No encontrado'},{status:404});
     return json(detail);
   }

@@ -11,7 +11,7 @@ export function portonApp(){return {...interaction,sheet:false,tab:'accesos',liv
  btnClass(d){return d.state==='error'?'border-red-300 bg-red-50':['reposo','sosteniendo'].includes(d.state)?'border-gray-300 bg-white hover:bg-gray-50':'border-transparent bg-white';},
  textClass(d){return d.state==='error'?'text-red-700':'text-material-dark';},
  fillClass(d){return d.state==='abierto'?'bg-green-600':'bg-material-dark';},
- grouped(code){return code.slice(0,3)+' '+code.slice(3);},
+ grouped(code){return code.includes('•')?code:code.slice(0,3)+' '+code.slice(3);},
  get visibleActivity(){return this.filter==='rechazados'?this.activity.filter(a=>!a.ok):this.activity;},get rejectedCount(){return this.activity.filter(a=>!a.ok).length;}
 };}
 export function adminApp(){return {...interaction,hoy:Array(24).fill(0),ayer:Array(24).fill(0),chartMax:4,hover:null,devices:[],expiring:[],log:[],result:'todos',devFilter:'todos',q:'',limit:6,
