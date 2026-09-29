@@ -1,3 +1,4 @@
+import {accountCookiePresent,accountUser} from './account-session.js';
 import { verifySecret } from './security.js';
 const TTL = 3600;
 const enc = new TextEncoder();
@@ -16,6 +17,7 @@ export function clearSessionCookie(platform=false) {
   return `${platform?'platform':'tenant'}_session=; HttpOnly; Secure; SameSite=Strict; Path=${platform?'/platform':'/'}; Max-Age=0`;
 }
 export async function verifySession(request,env,tenantId=null,platform=false) {
+  if(accountCookiePresent(request))return accountUser(request,env,tenantId,platform);
   const scope=platform?'platform':'tenant';
   const raw=(request.headers.get('Cookie')||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(scope+'_session='))?.split('=')[1];
   if (!raw || raw.length>2048) return null;
@@ -29,6 +31,7 @@ export async function verifySession(request,env,tenantId=null,platform=false) {
   if(!Number.isFinite(p.e)||p.e<=Date.now()||(!platform&&p.t!==tenantId))return null;
   const user=platform ? await env.DB.prepare('SELECT * FROM platform_admins WHERE id=?').bind(p.id).first() : await env.DB.prepare('SELECT * FROM users WHERE tenant_id=? AND id=?').bind(tenantId,p.id).first();
   if(!user||user.session_version!==p.v)return null;
+  if(await env.DB.prepare(platform?'SELECT 1 FROM account_platform WHERE admin_id=?':'SELECT 1 FROM account_memberships WHERE user_id=?').bind(user.id).first())return null;
   return user;
 }
 export async function login(env, tenantId, username, secret, platform=false) {
@@ -36,5 +39,6 @@ export async function login(env, tenantId, username, secret, platform=false) {
   // Equal work for unknown usernames; never return hashes to the browser.
   const dummy='pbkdf2$100000$00000000000000000000000000000000$'+'0'.repeat(64);
   const valid=await verifySecret(secret,user?.secret||dummy);
+  if(valid&&user&&await env.DB.prepare(platform?'SELECT 1 FROM account_platform WHERE admin_id=?':'SELECT 1 FROM account_memberships WHERE user_id=?').bind(user.id).first())return null;
   return valid&&user ? user : null;
 }

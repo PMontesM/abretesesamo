@@ -5,7 +5,7 @@ import {checkTurnstile,challengeAction} from '../src/lib/turnstile.js';
 const env={TURNSTILE_REQUIRED:'true',TURNSTILE_SITE_KEY:'test-site',TURNSTILE_SECRET_KEY:'test-secret',PUBLIC_HOSTNAME:'app.test'};
 const request=(path='/t/demo/api/open',token='valid')=>new Request('https://app.test'+path,{method:'POST',headers:{...(token?{'X-Turnstile-Token':token}:{}),'cf-connecting-ip':'192.0.2.1'}});
 test('protected routes include platform, tenant login and both visitor entry points',()=>{
- for(const path of ['/platform/login','/t/demo/api/login','/t/demo/api/login/'])assert.equal(challengeAction(path),'login');
+ for(const path of ['/account/login','/account/link','/platform/login','/t/demo/api/login','/t/demo/api/login/'])assert.equal(challengeAction(path),'login');
  for(const path of ['/t/demo/api/open','/t/demo/api/access-state','//t//demo/api/open/'])assert.equal(challengeAction(path),'visitor');
  assert.equal(challengeAction('/t/demo/admin/open-gate'),null);
 });
@@ -13,7 +13,7 @@ test('missing token and alternate host are rejected before DB or outbound reques
  let calls=0;const old=globalThis.fetch;globalThis.fetch=async()=>{calls++;throw Error('unexpected');};
  const guarded={...env,DB:{prepare(){throw Error('Database must not run');}}};
  try{
-  for(const path of ['/platform/login','/t/demo/api/login','/t/demo/api/open','/t/demo/api/access-state'])assert.equal((await worker.fetch(request(path,null),guarded,{})).status,403);
+  for(const path of ['/account/login','/account/link','/platform/login','/t/demo/api/login','/t/demo/api/open','/t/demo/api/access-state'])assert.equal((await worker.fetch(request(path,null),guarded,{})).status,403);
   assert.equal((await worker.fetch(new Request('https://alternate.workers.dev/health'),guarded,{})).status,404);
   assert.equal(calls,0);
  }finally{globalThis.fetch=old;}

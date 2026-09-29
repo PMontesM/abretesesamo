@@ -1,3 +1,4 @@
+import {buildingPicker} from './building-picker.js';
 import {buildingAdmin} from './admin-panel.js';
 import {superApp} from './super.js';
 import Alpine from '@alpinejs/csp';
@@ -12,7 +13,7 @@ const common={
  get initials(){return this.user.username.slice(0,2).toUpperCase();},
  get noticeCount(){return this.alerts?.length||this.livePasses?.filter(p=>this.expiring(p)).length||0;},
  async run(fn){try{return await fn();}catch(e){this.error=e.message;return null;}},
- async logout(){await this.run(async()=>{await api('/admin/logout',{});location.href=base;});},
+ async logout(){await this.run(async()=>{await api('/admin/logout',{});location.href='/login';});},
  profile(){infoDialog('Mi perfil',this.user.username+'\n'+this.tenant.name+'\n'+(this.user.role==='master'?'Administrador del edificio':'Residente')+'\nPara cambiar tu contraseña, contacta al administrador.');},
  support(){if(this.tenant.supportPhone)window.open('https://wa.me/'+this.tenant.supportPhone,'_blank','noopener');else infoDialog('Soporte','Contacta a la administración del edificio para recibir ayuda con tus accesos.');},
  notifications(){if(this.alerts?.length){document.getElementById('main-scroll').scrollTo({top:0,behavior:'smooth'});}else if(this.livePasses?.some(p=>this.expiring(p))){document.getElementById('pases').scrollIntoView();}else infoDialog('Notificaciones','No hay avisos nuevos en los datos de tu última consulta.');},
@@ -53,4 +54,4 @@ get confirmName(){return this.confirmTarget?.name||'';},resultCard:null,confirmT
  share(p){window.open('https://wa.me/?text='+encodeURIComponent(this.text(p)),'_blank','noopener');},
 });}
 function admin(){return buildingAdmin(resident,pass);}
-Alpine.plugin(focus);Alpine.data('superadmin',superApp);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();
+Alpine.plugin(focus);Alpine.data('buildingPicker',buildingPicker);Alpine.data('superadmin',superApp);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();

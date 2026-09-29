@@ -1,3 +1,4 @@
+import {clearAccountCookie} from './lib/account-session.js';
 import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {turnstileConfig} from './lib/turnstile.js';
 import {superPanel} from './lib/super-panel.js';
@@ -27,6 +28,7 @@ export async function handlePlatform(request,env,ctx,url){
   const json=async body=>Response.json({ok:true,...await protectCodes(env,body,admin,url.searchParams.get('tenantId'))});
   if(rest==='/admin'&&request.method==='GET')return html(getPlatformAdminHTML(admin,url.searchParams.get('view'),url.searchParams.get('tenantId')));
   if(rest==='/logout'&&request.method==='POST'){
+    if(admin.account_id){await env.DB.prepare('UPDATE accounts SET session_version=session_version+1 WHERE id=?').bind(admin.account_id).run();return Response.json({ok:true},{headers:{'Set-Cookie':clearAccountCookie()}});}
     await env.DB.prepare('UPDATE platform_admins SET session_version=session_version+1 WHERE id=?').bind(admin.id).run();
     return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie(true)}});
   }
@@ -66,6 +68,7 @@ export async function handlePlatform(request,env,ctx,url){
       try{return json({connection:await relayStatus(env,{trigger_config:JSON.stringify({deviceId:b.deviceId})})});}catch(e){if(e instanceof RelayError)throw new InputError(e.message);throw e;}
     }
     if(rest==='/api/change-password'){
+      if(admin.account_id)throw new InputError('Cambia la contraseña de tu acceso único desde Mi cuenta.');
       if(!await takeAttempt(env,`platform-password:${admin.id}`,10))return Response.json({ok:false,error:'Demasiados intentos. Espera cinco minutos.'},{status:429});
       if(!await verifySecret(b.currentSecret,admin.secret))return Response.json({ok:false,error:'La contraseña actual es incorrecta.'},{status:403});
       if(b.newSecret!==b.confirmSecret)throw new InputError('Las contraseñas nuevas no coinciden.');

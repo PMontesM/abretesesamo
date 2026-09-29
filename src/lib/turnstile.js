@@ -1,7 +1,7 @@
 // Validate before any database access. Never trust a browser-only challenge.
 export function challengeAction(pathname) {
   const path='/'+pathname.split('/').filter(Boolean).join('/');
-  if(path==='/platform/login'||/^\/t\/[^/]+\/api\/login$/.test(path))return 'login';
+  if(['/account/login','/account/link'].includes(path)||path==='/platform/login'||/^\/t\/[^/]+\/api\/login$/.test(path))return 'login';
   if(/^\/t\/[^/]+\/api\/(access-state|open)$/.test(path))return 'visitor';
   return null;
 }

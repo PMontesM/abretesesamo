@@ -65,6 +65,7 @@ export async function deleteUser(env,tenantId,userId,actor=null) {
   ]);
 }
 export async function resetSecret(env,tenantId,userId,secret,actor=null) {
+  if(await env.DB.prepare('SELECT 1 FROM account_memberships WHERE user_id=? AND tenant_id=?').bind(userId,tenantId).first())throw new InputError('Esta cuenta usa acceso único. El usuario cambia su contraseña desde Mi cuenta.');
   const hash=await hashSecret(secret);
   if(!await env.DB.prepare('SELECT id FROM users WHERE tenant_id=? AND id=?').bind(tenantId,userId).first())throw new InputError('Usuario inexistente');
   await env.DB.batch([env.DB.prepare('UPDATE users SET secret=?,session_version=session_version+1 WHERE tenant_id=? AND id=?').bind(hash,tenantId,userId),...auditStatements(env,actor,'reset_password',{tenantId,userId})]);

@@ -1,3 +1,6 @@
+import {clearAccountCookie} from './lib/account-session.js';
+import {Hono} from 'hono';
+import {accounts} from './accounts.js';
 import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {checkTurnstile,turnstileConfig} from './lib/turnstile.js';
 import {createPass,listPasses,extendPass,visitorGates} from './lib/passes.js';
@@ -53,13 +56,6 @@ function triggerReason(error){return (error instanceof TriggerError||error insta
 
 async function route(request,env,ctx) {
   const url=new URL(request.url);
-  if(env.PUBLIC_HOSTNAME&&url.hostname!==env.PUBLIC_HOSTNAME)return new Response('No encontrado',{status:404});
-  if(request.method==='POST'){
-    const origin=request.headers.get('Origin');
-    if(origin&&origin!==url.origin)return json({ok:false,error:'Origen no autorizado'},403);
-  }
-  const challengeFailure=await checkTurnstile(request,env);
-  if(challengeFailure)return challengeFailure;
   if(url.pathname==='/health')return json({ok:true,service:'Servidor web; no confirma estado físico del portón'});
   if(url.pathname==='/platform'||url.pathname.startsWith('/platform/'))return handlePlatform(request,env,ctx,url);
   const parts=url.pathname.split('/').filter(Boolean);
@@ -114,6 +110,7 @@ async function route(request,env,ctx) {
   if(rest==='/admin/connection'&&request.method==='POST'){if(user.role!=='master')return json({ok:false,error:'Solo administración puede consultar dispositivos'},403);if(!await takeAttempt(env,'connection:'+user.tenant_id,6))return json({ok:false,error:'Espera cinco minutos antes de consultar de nuevo'},429);const gate=await db.requireGate(env,user,(await jsonBody(request)).gateId);if(gate.trigger_type!=='mqtt')return json({ok:true,connection:null});return json({ok:true,connection:await relayStatus(env,gate)});}
   if(rest==='/admin/dashboard'&&request.method==='GET')return json({ok:true,...await db.dashboard(env,user)});
   if(rest==='/admin/logout'&&request.method==='POST'){
+    if(user.account_id){await env.DB.prepare('UPDATE accounts SET session_version=session_version+1 WHERE id=?').bind(user.account_id).run();return Response.json({ok:true},{headers:{'Set-Cookie':clearAccountCookie()}});}
     await env.DB.prepare('UPDATE users SET session_version=session_version+1 WHERE tenant_id=? AND id=?').bind(tenant.id,user.id).run();
     return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie()}});
   }
@@ -150,14 +147,26 @@ async function route(request,env,ctx) {
   }
   return json({ok:false,error:'No encontrado'},404);
 }
-export default {
-  async fetch(request,env,ctx){
-    let res;
-    try{res=await route(request,env,ctx);}catch(err){res=json({ok:false,error:err instanceof InputError?err.message:'No se pudo completar la operación. Actualiza la lista antes de reintentar.'},err instanceof InputError?400:500);}
-    const headers=new Headers(res.headers);
-    headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');headers.set('X-Frame-Options','DENY');
-    headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-    return new Response(res.body,{status:res.status,headers});
-  },
-  async scheduled(event,env,ctx){ctx.waitUntil(db.cleanup(env));}
-};
+const app=new Hono();
+app.use('*',async(c,next)=>{await next();c.header('Cache-Control','no-store');c.header('X-Content-Type-Options','nosniff');c.header('Referrer-Policy','no-referrer');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");});
+app.use('*',async(c,next)=>{
+ const request=c.req.raw,env=c.env,url=new URL(request.url);
+  if(env.PUBLIC_HOSTNAME&&url.hostname!==env.PUBLIC_HOSTNAME)return new Response('No encontrado',{status:404});
+  if(request.method==='POST'){
+    const origin=request.headers.get('Origin');
+    if(origin&&origin!==url.origin)return json({ok:false,error:'Origen no autorizado'},403);
+  }
+  const challengeFailure=await checkTurnstile(request,env);
+  if(challengeFailure)return challengeFailure;
+ await next();
+});
+
+app.onError((err,c)=>c.json({ok:false,error:err instanceof InputError?err.message:'No se pudo completar la operación. Actualiza la lista antes de reintentar.'},err instanceof InputError?400:500));
+app.route('/',accounts);
+app.get('/health',c=>c.json({ok:true,service:'Servidor web; no confirma estado físico del portón'}));
+app.all('/platform',c=>route(c.req.raw,c.env,{}));
+app.all('/platform/*',c=>route(c.req.raw,c.env,{}));
+app.all('/t/:slug',c=>route(c.req.raw,c.env,{}));
+app.all('/t/:slug/*',c=>route(c.req.raw,c.env,{}));
+app.notFound(c=>c.text('No encontrado',404));
+export default {fetch:app.fetch,async scheduled(event,env,ctx){ctx.waitUntil(db.cleanup(env));}};
