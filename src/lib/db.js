@@ -134,7 +134,7 @@ export async function createCode(env,user,body) {
     if(n>=4294000000)continue;
     const code=String(n%1000000).padStart(6,'0');
     const row=await env.DB.prepare(`INSERT INTO codes(code,tenant_id,gate_id,label,owner,owner_id,single_use,expires_at,created_at,visit_mode)
-      SELECT ?,?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM codes WHERE tenant_id=?)<20000 AND (SELECT COUNT(*) FROM codes WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain') AND (expires_at IS NULL OR expires_at>?))<200 ON CONFLICT(tenant_id,code) DO NOTHING RETURNING *`)
+      SELECT ?,?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM codes WHERE tenant_id=?)<20000 AND (SELECT COUNT(*) FROM codes WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain') AND (expires_at IS NULL OR expires_at>?))<200 ON CONFLICT DO NOTHING RETURNING *`)
       .bind(code,user.tenant_id,gate.id,label,user.username,user.id,body.singleUse?1:0,expires,Date.now(),body.visit===true?1:0,user.tenant_id,user.tenant_id,user.id,Date.now()).first();
     if(row)return {...row,gate_name:gate.name};
   }

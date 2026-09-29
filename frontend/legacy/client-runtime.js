@@ -46,7 +46,7 @@ export function clientApp(config){
     });securityQueue=task;return task;
   }
   async function api(path,body){
-    const action=(path.endsWith('/login')||path==='/account/link')?'login':/\/api\/(access-state|open)$/.test(path)?'visitor':null;
+    const action=(path.endsWith('/login')||path==='/account/link')?'login':(path==='/api/visitor-entry'||/\/api\/(access-state|open)$/.test(path))?'visitor':null;
     const token=config.turnstileRequired&&body!==undefined&&action?await securityToken(action):null;
     let r;try{r=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json',...(token?{'X-Turnstile-Token':token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});}catch{throw Error('Sin conexión. Actualiza los datos antes de repetir una operación.');}
     let data;try{data=await r.json();}catch{throw Error(r.status===429?'Demasiadas solicitudes. Espera un momento antes de intentar de nuevo.':'Respuesta inesperada del servidor');}
@@ -282,8 +282,13 @@ export function clientApp(config){
   function accountView(){
     const link=(text,url)=>{const a=el('a',text,'button secondary');a.href=url;return a;};
     const formSubmit=(form,submit,action)=>{const local=el('div');local.setAttribute('role','alert');form.append(submit,local);form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{await action();}catch(err){feedback(local,err.message,true);}finally{submit.disabled=false;}});};
+    if(config.mode==='account-visitor'){
+      const box=section('Tengo un código de visita'),form=el('form'),code=input(form,'Código de seis dígitos');code.inputMode='numeric';code.pattern='[0-9]{6}';code.maxLength=6;code.autocomplete='off';const submit=el('button','Continuar');submit.type='submit';
+      formSubmit(form,submit,async()=>{const value=code.value.trim(),d=await api('/api/visitor-entry',{code:value});try{sessionStorage.setItem('visitor-access:'+d.tenantId,value);location.href=d.redirect;}catch{location.href=d.redirect+'?code='+encodeURIComponent(value);}});
+      box.append(el('p','No necesitas una cuenta. Identificaremos el edificio con tu código.','muted'),form,link('Entrar con mi correo','/login'));view.append(box);return;
+    }
     if(config.mode==='account-login'){
-      const box=section('Iniciar sesión'),form=el('form'),email=input(form,'Correo electrónico','email'),password=input(form,'Contraseña','password');email.autocomplete='username';password.autocomplete='current-password';password.minLength=1;const submit=el('button','Entrar');submit.type='submit';formSubmit(form,submit,async()=>{const d=await api('/account/login',{email:email.value,secret:password.value});location.href=d.redirect;});box.append(el('p','Una cuenta para todos tus edificios.','muted'),form,link('Activar mi acceso actual','/account'));view.append(box);return;
+      const box=section('Iniciar sesión'),form=el('form'),email=input(form,'Correo electrónico','email'),password=input(form,'Contraseña','password');email.autocomplete='username';password.autocomplete='current-password';password.minLength=1;const submit=el('button','Entrar');submit.type='submit';formSubmit(form,submit,async()=>{const d=await api('/account/login',{email:email.value,secret:password.value});location.href=d.redirect;});box.append(el('p','Una cuenta para todos tus edificios.','muted'),form,link('Activar mi acceso actual','/account'));view.append(link('Tengo un código de visita','/visit'),box);return;
     }
     if(config.mode==='account-settings'){
       const box=section('Mi cuenta');box.append(el('p',config.email));view.append(box);

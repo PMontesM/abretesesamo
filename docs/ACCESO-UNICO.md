@@ -26,3 +26,9 @@ Respaldar D1 y aplicar una vez `database/migration_010_accounts.sql` antes del W
 El Worker utiliza Hono para el enrutamiento principal, las rutas de cuenta y los middleware de seguridad, Turnstile y errores. Los módulos existentes mantienen la lógica de acceso, MQTT, auditoría y tareas programadas. Se conserva un solo Worker con D1 y Assets. No requiere servicios de pago; siguen aplicando las cuotas existentes.
 
 Pruebas: `npm test` y `npm run test:ui`. Incluyen vinculación con prueba de credenciales, dos edificios con roles distintos, aislamiento, contraseñas, sesiones, permisos de superadministración y selector móvil.
+
+## Visitantes y códigos únicos
+
+El login común ofrece **Tengo un código de visita** (`/visit`). No pide usuario ni edificio: el código de seis dígitos identifica el edificio y conserva la selección de portones permitidos y la confirmación antes de abrir. La consulta está protegida por Turnstile y un límite de diez intentos por IP cada cinco minutos. No activa relés ni inicia la ventana de visita.
+
+Aplicar `migration_011_global_codes.sql` antes de publicar esta versión. El índice único global evita colisiones incluso entre creaciones simultáneas; ambas rutas de creación reintentan con otro código. La migración se detiene si hay duplicados, sin modificarlos. Los códigos se reservan mientras exista su registro (incluidos revocados o vencidos); no se garantiza unicidad histórica tras borrar un registro.

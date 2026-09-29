@@ -2,7 +2,7 @@
 export function challengeAction(pathname) {
   const path='/'+pathname.split('/').filter(Boolean).join('/');
   if(['/account/login','/account/link'].includes(path)||path==='/platform/login'||/^\/t\/[^/]+\/api\/login$/.test(path))return 'login';
-  if(/^\/t\/[^/]+\/api\/(access-state|open)$/.test(path))return 'visitor';
+  if(path==='/api/visitor-entry'||/^\/t\/[^/]+\/api\/(access-state|open)$/.test(path))return 'visitor';
   return null;
 }
 export function turnstileConfig(env) {

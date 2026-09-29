@@ -18,7 +18,7 @@ export async function createPass(env,user,body){
  for(let i=0;i<20;i++){
   const n=crypto.getRandomValues(new Uint32Array(1))[0];if(n>=4294000000)continue;const code=String(n%1000000).padStart(6,'0');
   const insert=env.DB.prepare(`INSERT INTO codes(code,tenant_id,gate_id,label,owner,owner_id,single_use,expires_at,created_at,visit_mode,category,creation_token)
-   SELECT ?,?,?,?,?,?,0,?,?,?,?,? WHERE (SELECT COUNT(*) FROM codes WHERE tenant_id=?)<20000 AND (SELECT COUNT(*) FROM codes WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain') AND (expires_at IS NULL OR expires_at>?))<200 ON CONFLICT(tenant_id,code) DO NOTHING`).bind(code,user.tenant_id,ids[0],label,user.username,user.id,expires,now,mode==='visit'?1:0,category,token,user.tenant_id,user.tenant_id,user.id,now);
+   SELECT ?,?,?,?,?,?,0,?,?,?,?,? WHERE (SELECT COUNT(*) FROM codes WHERE tenant_id=?)<20000 AND (SELECT COUNT(*) FROM codes WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain') AND (expires_at IS NULL OR expires_at>?))<200 ON CONFLICT DO NOTHING`).bind(code,user.tenant_id,ids[0],label,user.username,user.id,expires,now,mode==='visit'?1:0,category,token,user.tenant_id,user.tenant_id,user.id,now);
   const result=await env.DB.batch([insert,...gates.map(g=>env.DB.prepare('INSERT INTO code_gates(tenant_id,code,gate_id,authorized_config) SELECT tenant_id,code,?,? FROM codes WHERE tenant_id=? AND code=? AND creation_token=?').bind(g.id,g.trigger_config,user.tenant_id,code,token))]);
   if(result[0].meta.changes)return {code};
  }
