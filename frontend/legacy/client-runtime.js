@@ -282,13 +282,17 @@ export function clientApp(config){
   function accountView(){
     const link=(text,url)=>{const a=el('a',text,'button secondary');a.href=url;return a;};
     const formSubmit=(form,submit,action)=>{const local=el('div');local.setAttribute('role','alert');form.append(submit,local);form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{await action();}catch(err){feedback(local,err.message,true);}finally{submit.disabled=false;}});};
+    if(['account-login','account-visitor'].includes(config.mode)){
+      const choices=el('div',undefined,'entry-choices');choices.setAttribute('aria-label','Elige cómo entrar');
+      for(const [label,url,mode] of [['Tengo un código de visita','/visit','account-visitor'],['Entrar con mi usuario','/login','account-login']]){const choice=button(label,()=>{location.href=url;});choice.setAttribute('aria-pressed',String(config.mode===mode));choices.append(choice);}view.append(choices);
+    }
     if(config.mode==='account-visitor'){
-      const box=section('Tengo un código de visita'),form=el('form'),code=input(form,'Código de seis dígitos');code.inputMode='numeric';code.pattern='[0-9]{6}';code.maxLength=6;code.autocomplete='off';const submit=el('button','Continuar');submit.type='submit';
+      const box=section('Abrir con código de visita'),form=el('form'),code=input(form,'Código de seis dígitos');code.inputMode='numeric';code.pattern='[0-9]{6}';code.maxLength=6;code.autocomplete='off';const submit=el('button','Continuar');submit.type='submit';
       formSubmit(form,submit,async()=>{const value=code.value.trim(),d=await api('/api/visitor-entry',{code:value});try{sessionStorage.setItem('visitor-access:'+d.tenantId,value);location.href=d.redirect;}catch{location.href=d.redirect+'?code='+encodeURIComponent(value);}});
-      box.append(el('p','No necesitas una cuenta. Identificaremos el edificio con tu código.','muted'),form,link('Entrar con mi correo','/login'));view.append(box);return;
+      form.className='visitor-form';box.append(el('p','Ingresa tu código para ver los accesos disponibles. No necesitas una cuenta.','entry-subtitle'),form);view.append(box);return;
     }
     if(config.mode==='account-login'){
-      const box=section('Iniciar sesión'),form=el('form'),email=input(form,'Correo electrónico','email'),password=input(form,'Contraseña','password');email.autocomplete='username';password.autocomplete='current-password';password.minLength=1;const submit=el('button','Entrar');submit.type='submit';formSubmit(form,submit,async()=>{const d=await api('/account/login',{email:email.value,secret:password.value});location.href=d.redirect;});box.append(el('p','Una cuenta para todos tus edificios.','muted'),form,link('Activar mi acceso actual','/account'));view.append(link('Tengo un código de visita','/visit'),box);return;
+      const box=section('Acceso de residentes y administradores'),form=el('form'),email=input(form,'Correo electrónico','email'),password=input(form,'Contraseña','password');email.autocomplete='username';password.autocomplete='current-password';password.minLength=1;const submit=el('button','Entrar');submit.type='submit';formSubmit(form,submit,async()=>{const d=await api('/account/login',{email:email.value,secret:password.value});location.href=d.redirect;});box.append(el('p','Una cuenta para todos tus edificios.','muted'),form,link('Activar mi acceso actual','/account'));view.append(box);return;
     }
     if(config.mode==='account-settings'){
       const box=section('Mi cuenta');box.append(el('p',config.email));view.append(box);

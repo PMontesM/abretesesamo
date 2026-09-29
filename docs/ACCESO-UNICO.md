@@ -32,3 +32,9 @@ Pruebas: `npm test` y `npm run test:ui`. Incluyen vinculación con prueba de cre
 El login común ofrece **Tengo un código de visita** (`/visit`). No pide usuario ni edificio: el código de seis dígitos identifica el edificio y conserva la selección de portones permitidos y la confirmación antes de abrir. La consulta está protegida por Turnstile y un límite de diez intentos por IP cada cinco minutos. No activa relés ni inicia la ventana de visita.
 
 Aplicar `migration_011_global_codes.sql` antes de publicar esta versión. El índice único global evita colisiones incluso entre creaciones simultáneas; ambas rutas de creación reintentan con otro código. La migración se detiene si hay duplicados, sin modificarlos. Los códigos se reservan mientras exista su registro (incluidos revocados o vencidos); no se garantiza unicidad histórica tras borrar un registro.
+
+## Restablecer la demostración
+
+`node tools/restablecer-demo.mjs https://host directorio-privado --prepare-reset` prepara SQL y credenciales privadas; no ejecuta cambios remotos. El SQL borra datos de todos los edificios y crea únicamente `residencial-demo`, con cuatro cuentas globales ya vinculadas, tres portones simulados y seis códigos aleatorios con distintos tipos y estados. Conserva las identidades de superadministración, sus cuentas globales y la configuración/inventario MQTT; elimina asignaciones, observaciones e historial de pruebas. Respaldar D1 y verificar el SQL antes de aplicarlo. No subir los archivos generados ni las contraseñas al repositorio.
+
+Las pantallas comunes de login y visitante reutilizan las dos opciones, colores y componentes de las pantallas del edificio. La identificación del edificio mediante un código no envía ninguna orden de apertura.
