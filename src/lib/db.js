@@ -1,3 +1,4 @@
+import {provisionStatements} from './account-provision.js';
 import {requireInventory} from './relay-inventory.js';
 import {deviceConfig} from './relay.js';
 import { takeAttempt } from './ratelimit.js';
@@ -19,7 +20,7 @@ export async function requireGate(env,user,id) {
   return gate;
 }
 export async function listUsers(env,tenantId) {
-  const users=await rows(env.DB.prepare('SELECT id,username,role FROM users WHERE tenant_id=? ORDER BY created_at,id').bind(tenantId));
+  const users=await rows(env.DB.prepare('SELECT u.id,u.username,u.role,a.email FROM users u LEFT JOIN account_memberships m ON m.user_id=u.id LEFT JOIN accounts a ON a.id=m.account_id WHERE u.tenant_id=? ORDER BY u.created_at,u.id').bind(tenantId));
   const permissions=await rows(env.DB.prepare('SELECT user_id,gate_id FROM user_gates WHERE tenant_id=?').bind(tenantId));
   return users.map(u=>({...u,gateIds:permissions.filter(p=>p.user_id===u.id).map(p=>p.gate_id)}));
 }
@@ -38,6 +39,7 @@ export async function createUser(env,tenantId,body,actor=null) {
   await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'user',?)").bind(id,tenantId,name,hash,Date.now()),
     ...gates.map(g=>env.DB.prepare('INSERT INTO user_gates(tenant_id,user_id,gate_id) VALUES(?,?,?)').bind(tenantId,id,g)),
+    ...provisionStatements(env,body.email,hash,id,tenantId),
     ...auditStatements(env,actor,'create_user',{tenantId,userId:id,gateIds:gates})
   ]);
   return id;
@@ -79,7 +81,7 @@ export async function createTenant(env,body,actor=null) {
   const config=type==='mqtt'?deviceConfig(body.deviceId):type==='demo'?'{}':triggerConfig(body.triggerUrl,body.method||'GET'),gateName=required(body.gateName,'Nombre del portón');
   if(type==='mqtt')await requireInventory(env,body.deviceId);
   if(type==='mqtt'&&await env.DB.prepare("SELECT id FROM gates WHERE trigger_type='mqtt' AND json_extract(trigger_config,'$.deviceId')=?").bind(body.deviceId).first())throw new InputError('Este dispositivo ya está asignado a otro portón');
-  const base=customSlug||buildingSlug(name),id=crypto.randomUUID();
+  const base=customSlug||buildingSlug(name),id=crypto.randomUUID(),masterId=crypto.randomUUID();
   // The unique index resolves concurrent registrations; the batch rolls back
   // all related records if another request claims the same automatic slug.
   for(let attempt=0;attempt<100;attempt++){
@@ -89,7 +91,8 @@ export async function createTenant(env,body,actor=null) {
       await env.DB.batch([
         env.DB.prepare("INSERT INTO tenants(id,slug,name,status,created_at) VALUES(?,?,?,'active',?)").bind(id,slug,name,Date.now()),
         env.DB.prepare('INSERT INTO gates(id,tenant_id,name,trigger_type,trigger_config,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),id,gateName,type,config,Date.now()),
-        env.DB.prepare("INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'master',?)").bind(crypto.randomUUID(),id,user,hash,Date.now()),
+        env.DB.prepare("INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'master',?)").bind(masterId,id,user,hash,Date.now()),
+        ...provisionStatements(env,body.masterEmail,hash,masterId,id),
         ...auditStatements(env,actor,'create_tenant',{tenantId:id,name,slug})
       ]);
       return id;

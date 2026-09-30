@@ -1,5 +1,3 @@
-> Actualización 2026-09-26: el backend acepta únicamente protocolo 3. La referencia actual es `firmware/porton-a001.yaml`, revisión `2026-09-26-v4.1`, suministrada por el propietario. Los archivos mserrano3 anteriores quedan como referencia histórica y no son compatibles con el backend actual. La plantilla nueva no se ha compilado ni flasheado desde esta actualización. Se conserva sin modificar su modo QA.
-
 # Relés MQTT desde la plataforma
 
 ## Configuración cotidiana
@@ -14,7 +12,6 @@
 
 Buscar relés usa los mensajes retenidos de `gate/+/state`, `gate/+/info` y `gate/+/health` durante una ventana corta y hasta 200 dispositivos por consulta. Es un inventario de dispositivos reportados, no una lista garantizada de todas las conexiones del broker. La búsqueda no cambia nombres ni asignaciones existentes.
 
-La asociación de esta instalación es **mserrano3 / Edificio / mserrano3-principal**. El dispositivo conserva su propia cuenta de HiveMQ. La plataforma utiliza sus dos cuentas centrales; no almacena la contraseña particular de cada dispositivo.
 
 Las contraseñas guardadas no se recuperan en el formulario. Dejar un campo vacío conserva su contraseña si el usuario no cambió; cambiar el usuario exige capturar una contraseña nueva. Solo los administradores de plataforma pueden configurar estas cuentas. Crear cuentas, permisos y flashear firmware en HiveMQ/ESPHome siguen siendo tareas de aprovisionamiento externas.
 
@@ -32,7 +29,7 @@ El Worker usa MQTT 3.1.1 sobre el WebSocket del runtime, conexiones cortas, clie
 
 ## Confirmación y protección contra repeticiones
 
-Antes de publicar, el Worker reserva el dispositivo en D1 y obtiene información reciente del firmware v2. Usa el `boot_id` actual, un UUID por comando y una vigencia de 10 segundos. Publica JSON a `cmd` con QoS 1 y **retain desactivado**. No reenvía ni reconecta automáticamente.
+Antes de publicar, el Worker reserva el dispositivo en D1 y obtiene información reciente del firmware de protocolo 3. Usa el `boot_id` actual, un UUID por comando y una vigencia de 10 segundos. Publica JSON a `cmd` con QoS 1 y **retain desactivado**. No reenvía ni reconecta automáticamente.
 
 La respuesta positiva requiere `completed` (o `duplicate` con resultado `completed`) del mismo comando y arranque, en un mensaje no retenido. `PUBACK`, el estado `opening` y `accepted` por sí solos no son confirmación final. El pulso confirmado no demuestra que el portón se haya abierto: no hay sensor de posición.
 
@@ -50,14 +47,8 @@ Los fallos seguros anteriores al envío y rechazos explícitos no consumen el c�
 - `relay_commands` conserva intención, arranque, vencimiento, resultado y relación con la solicitud de origen. La limpieza mantiene pendientes/inciertas; elimina registros finalizados de más de 30 días.
 - Un dispositivo solo se asigna a un portón, incluso si está inactivo. Un bloqueo pendiente impide cambiar su asociación. Cambiar la integración revoca códigos previos según la política existente.
 
-## Verificación de esta entrega
+## Disponibilidad y verificación
 
-60 pruebas automatizadas cubren los flujos existentes, credenciales cifradas y acceso restringido, simultaneidad, expiración, fallo de persistencia, confirmaciones incorrectas, consulta sin publicación, formato MQTT, servidor editable, descubrimiento e inventario. El navegador verifica Configuración lateral, formularios, inventario móvil, asignación exclusiva y estado Desconectado conservado al actualizar la página sin deshabilitar el acceso, además de los flujos anteriores.
+La plataforma requiere protocolo 3. La disponibilidad offline prevalece sobre un estado operativo retenido. Información incompleta, arranque discordante o diagnóstico demasiado antiguo impiden enviar una orden. Comprobar conexión no activa el relé.
 
-Las pruebas automatizadas utilizan un broker simulado y no accionan hardware. En la verificación final de producción ya había credenciales guardadas desde la plataforma y una orden real registrada en `cooldown`: este resultado requiere confirmación de pulso completado del dispositivo. Esto verifica el intercambio de la orden y su confirmación; no prueba el movimiento físico del portón. No se enviaron comandos de apertura desde las herramientas de verificación de esta entrega.
-
-## Actualización availability (2026-09-19)
-
-Consulta, apertura e inventario leen availability además del estado operativo. offline de disponibilidad prevalece sobre un state online retenido. Los firmwares que anuncian info.availability_topic=true o health.firmware_revision=2026-09-19-info-1 / 2026-09-19-availability-2 requieren availability online antes de abrir. Sin el mensaje no se envía una orden. Se conserva compatibilidad con el firmware anterior que publicaba su LWT en state.
-
-Comprobar conexión muestra el diagnóstico del último reporte, sin accionar el relé. Los datos de una consulta offline pueden ser parciales. No se añadieron tablas ni se modificaron credenciales, asignaciones o revisiones pendientes.
+Las pruebas automáticas usan un broker simulado y cubren comandos, confirmaciones, concurrencia, permisos y fallos de comunicación. La integración eléctrica se verifica en sitio.

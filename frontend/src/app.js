@@ -10,12 +10,12 @@ const merge=(target,...parts)=>{for(const p of parts)Object.defineProperties(tar
 const types={Visita:'fa-solid fa-user',Entrega:'fa-solid fa-motorcycle',Servicio:'fa-solid fa-broom'};
 const pass=c=>({id:c.codeRef||c.code,codeRef:c.codeRef,codeMasked:!!c.codeMasked,code:c.code,name:c.label,owner:c.owner,ownerId:c.owner_id,type:c.visit_mode||c.single_use?'Un solo uso':c.expires_at?'Con vigencia':'Permanente',icon:types[c.category]||types.Visita,access:c.access,createdAt:c.visit_started_at||c.created_at,expiresAt:c.expires_at,visit:!!c.visit_mode,single:!!c.single_use,started:c.visit_started_at,status:c.status});
 const common={
- dashboardUrl:base+'/admin',legacyUrl:base+'/admin?view=codes',usersUrl:base+'/admin?view=users',tenant:config.tenant,user:config.user,error:'',loading:true,busy:false,now:Date.now(),types,typeNames:Object.keys(types),
+ dashboardUrl:base+'/admin',usersUrl:base+'/admin?section=residentes',tenant:config.tenant,user:config.user,error:'',loading:true,busy:false,now:Date.now(),types,typeNames:Object.keys(types),
  get initials(){return this.user.username.slice(0,2).toUpperCase();},
  get noticeCount(){return this.alerts?.length||this.livePasses?.filter(p=>this.expiring(p)).length||0;},
  async run(fn){try{return await fn();}catch(e){this.error=e.message;return null;}},
  async logout(){await this.run(async()=>{await api('/admin/logout',{});location.href='/login';});},
- profile(){infoDialog('Mi perfil',this.user.username+'\n'+this.tenant.name+'\n'+(this.user.role==='master'?'Administrador del edificio':'Residente')+'\nPara cambiar tu contraseña, contacta al administrador.');},
+ profile(){location.href='/account';},
  support(){if(this.tenant.supportPhone)window.open('https://wa.me/'+this.tenant.supportPhone,'_blank','noopener');else infoDialog('Soporte','Contacta a la administración del edificio para recibir ayuda con tus accesos.');},
  notifications(){if(this.alerts?.length){this.goTo('inicio');}else if(this.livePasses?.some(p=>this.expiring(p))){this.selectTab('pases');}else infoDialog('Notificaciones','No hay avisos nuevos en los datos de tu última consulta.');},
  async refresh(){if(this.busy)return;this.busy=true;await this.run(async()=>this.load(await api('/admin/panel?offset='+new Date().getTimezoneOffset())));this.busy=false;this.loading=false;},

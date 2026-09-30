@@ -9,6 +9,7 @@ export function buildingAdmin(resident,pass){
   tab:'inicio',users:[],userQuery:'',codeQuery:'',codeOwner:'',codeGate:'',codeStatus:'current',codePage:0,codeMore:false,codeBusy:false,listedPasses:[],codeRevision:0,
   userModal:null,userForm:{username:'',secret:'',gateIds:[]},userError:'',welcome:null,actionConfirmation:null,confirmBusy:false,
   settingsOpen:false,supportPhone:config.tenant.supportPhone||'',settingsMessage:'',checking:null,alerts:[],dismissed:[],summary:{},
+  get userEmail(){return this.userForm.email||'';},set userEmail(v){this.userForm.email=v;},
   get userName(){return this.userForm.username;},set userName(v){this.userForm.username=v;},
   get userPassword(){return this.userForm.secret;},set userPassword(v){this.userForm.secret=v;},
   get userGates(){return this.userForm.gateIds;},set userGates(v){this.userForm.gateIds=v;},
@@ -28,14 +29,14 @@ export function buildingAdmin(resident,pass){
   userAccess(u){return this.doors.filter(d=>u.role==='master'||u.gateIds.includes(d.id)).map(d=>d.name).join(', ')||'Sin accesos asignados';},
   editUser(kind,u=null){this.userError='';this.userModal={kind,id:u?.id||'',title:kind==='create'?'Nuevo residente':kind==='permissions'?'Accesos de '+u.username:'Contraseña de '+u.username};this.userForm={username:u?.username||'',secret:'',gateIds:u?.gateIds?[...u.gateIds]:[]};},
   async saveUser(){if(this.busy)return;this.busy=true;this.userError='';const modal=this.userModal,form={...this.userForm,gateIds:[...this.userForm.gateIds]};try{
-   if(modal.kind==='create')await api('/admin/create-user',{username:form.username,secret:form.secret,gateIds:form.gateIds});
+   if(modal.kind==='create')await api('/admin/create-user',{username:form.username,email:form.email,secret:form.secret,gateIds:form.gateIds});
    else if(modal.kind==='permissions')await api('/admin/users/permissions',{userId:modal.id,gateIds:form.gateIds});
    else await api('/admin/users/reset',{userId:modal.id,secret:form.secret});
    this.userModal=null;this.userForm.secret='';this.busy=false;
    if(modal.kind==='password'&&form.username===this.user.username){location.href=base+'?access=resident';return;}
-   await this.refresh();if(modal.kind==='create')this.showWelcome({username:form.username,role:'user',gateIds:form.gateIds},form.secret);else this.notify(modal.kind==='permissions'?'Accesos actualizados':'Contraseña actualizada; sesiones anteriores cerradas');
+   await this.refresh();if(modal.kind==='create')this.showWelcome({username:form.username,email:form.email,role:'user',gateIds:form.gateIds},form.secret);else this.notify(modal.kind==='permissions'?'Accesos actualizados':'Contraseña actualizada; sesiones anteriores cerradas');
   }catch(e){this.userError=e.message;this.busy=false;}},
-  showWelcome(u,password=''){const gates=this.userAccess(u);this.welcome={title:password?'Usuario creado':'Compartir acceso de '+u.username,text:'¡Bienvenido a '+this.tenant.name+'!\n\nEntra a tu panel: '+location.origin+'/login\nUsuario del acceso actual: '+u.username+(password?'\nContraseña: '+password:'\nUsa la contraseña que recibiste. Si no la recuerdas, contacta al administrador.')+'\n\n'+(gates==='Sin accesos asignados'?'Tu cuenta está lista. Solicita tus accesos al administrador.':'Puedes abrir tus accesos autorizados ('+gates+'), crear códigos para visitas y consultar tu historial.')+'\n\nSi es tu primer acceso, activa tu cuenta con correo y vincula estos datos en: '+location.origin+'/account?building='+encodeURIComponent(this.tenant.slug)+'\nSi ya la activaste, entra con tu correo y contraseña de cuenta única. Guarda este mensaje en privado.'};},
+  showWelcome(u,password=''){const gates=this.userAccess(u);this.welcome={title:password?'Usuario creado':'Compartir acceso de '+u.username,text:'¡Bienvenido a '+this.tenant.name+'!\n\nEntra en '+location.origin+'/login\nCorreo: '+(u.email||u.username)+(password?'\nContraseña inicial (solo para cuentas nuevas): '+password:'\nUsa la contraseña de tu cuenta.')+'\n\nPuedes abrir tus accesos autorizados ('+gates+'), crear códigos para visitas y consultar tu historial. Si ya tienes cuenta, conserva tu contraseña y elige este edificio en tu panel. Guarda este mensaje en privado.'};},
   get welcomeLink(){return 'https://wa.me/?text='+encodeURIComponent(this.welcome?.text||'');},
   get modalTitle(){return this.userModal?.title||'';},get modalKind(){return this.userModal?.kind||'';},
   confirmDelete(u){this.actionConfirmation={kind:'user',id:u.id,title:'Eliminar residente',message:'¿Eliminar a '+u.username+'? Se cerrarán sus sesiones y se revocarán sus códigos activos.'};},

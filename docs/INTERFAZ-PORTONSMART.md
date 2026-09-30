@@ -39,7 +39,7 @@ El formulario inicia en Un solo uso, con siete días para comenzar y diez minuto
 
 El resumen adopta `frontend/reference/super.html` mediante Alpine CSP y recursos locales. Incluye edificios con búsqueda, cuentas activas/suspendidas, órdenes enviadas hoy, administradores, auditoría y registros pendientes de códigos, órdenes directas y relés. Las cuentas de edificios no pueden consultar la API de plataforma.
 
-Administrar edificio conserva la identidad del superadministrador y abre la gestión existente de portones, usuarios, permisos y revisiones. Nuevo edificio, configuración MQTT, inventario, reportes y contraseña siguen disponibles con navegación de regreso al resumen. No hay suplantación de cuentas, planes comerciales ni facturación simulada.
+Administrar edificio conserva la identidad del superadministrador y abre la gestión integrada de portones, usuarios, permisos y revisiones. Nuevo edificio, configuración MQTT, inventario, reportes y contraseña siguen disponibles con navegación de regreso al resumen. No hay suplantación de cuentas, planes comerciales ni facturación simulada.
 
 Los estados consultados caducan a los dos minutos. El resumen no conecta a MQTT; solo lo hace el botón Comprobar. Las versiones de firmware se muestran a partir de esas consultas durante la sesión, con Sin consultar cuando no hay datos. No se ofrece actualización masiva OTA. El inventario muestra hasta 500 relés y la auditoría los últimos 200 eventos. Las cifras de revisión cuentan registros, que pueden corresponder a una misma operación.
 
@@ -61,7 +61,7 @@ Se elimina la sección y enlace duplicados Todos mis códigos. Cerrar sesión ap
 La navegación usa una sola interfaz Alpine: Inicio, Portones, Residentes, Códigos, Historial y Configuración. Los enlaces antiguos de administración (`?view=users`, `codes`, `passes`, `logs` y `gates`) abren la sección correspondiente del mismo panel. Cerrar sesión está visible en el menú lateral móvil.
 
 - Portones conserva pulsación, confirmación visual y animación; comprobación de conexión e información técnica se presentan en la misma tarjeta, con detalles desplegables. Las estadísticas por hora quedan plegadas al inicio.
-- Residentes conserva alta, permisos, cambio de contraseña, eliminación y bienvenida por WhatsApp. Compartir una cuenta existente no revela su contraseña. Quitar accesos revoca los códigos vinculados; cambiar contraseña invalida las sesiones anteriores. Eliminar y revocar requieren un diálogo con el estilo del panel.
+- Residentes conserva alta por correo, permisos, eliminación y bienvenida por WhatsApp. Compartir una cuenta existente no revela su contraseña. Quitar accesos revoca los códigos vinculados; el titular cambia su contraseña global en Mi cuenta. Eliminar y revocar requieren un diálogo con el estilo del panel.
 - Códigos usa el formulario del residente y la tarjeta de resultado para copiar o compartir. La lista permite filtrar por residente, portón, estado, código o referencia. Los filtros se aplican en el servidor antes de paginar, incluyendo accesos secundarios de un pase. Cada página contiene hasta 100 códigos y se amplía con Cargar más códigos. Se conserva el aislamiento por edificio y dueño.
 - Historial muestra el portón, usuario y código, distingue los resultados, ofrece filtros y exportación CSV de los últimos 200 registros disponibles.
 - Configuración reúne el contacto de ayuda; asignación de relés y revisión de órdenes siguen en superadministración.
@@ -74,3 +74,7 @@ Esta actualización no necesita migraciones ni cambios del firmware. No agrega s
 El administrador ve completos solo sus propios códigos. Los códigos de residentes se muestran como `12••56`, sin copiar ni compartir. El superadministrador ve todos los códigos enmascarados. La regla también cubre historial, exportación y detalles estructurados de auditoría. El backend sustituye el código antes de enviarlo al navegador y retira tokens internos de creación y reserva.
 
 Revocar y resolver usan referencias cifradas, vinculadas a la cuenta y al edificio; no exponen la credencial de acceso ni requieren migración. La búsqueda de códigos ajenos utiliza la representación visible, no los dígitos ocultos. Mostrar cuatro dígitos deja cien combinaciones posibles: este formato no reemplaza los límites de intentos del acceso público.
+
+## Interfaz única
+
+No se publica una segunda interfaz. Configuración MQTT, inventario, reportes y la gestión de cada edificio se muestran en el panel actual, con tarjetas adaptadas al celular. Dentro de cada edificio hay cuatro secciones explícitas: Portones, Usuarios, Códigos y Revisiones. Los accesos desde Administradores y Pendientes abren la sección correspondiente. Login y visitantes comparten los estilos de entrada de PortonSmart.

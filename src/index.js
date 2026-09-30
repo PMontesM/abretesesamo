@@ -1,3 +1,4 @@
+import {normalizeEmail} from './lib/account-provision.js';
 import {clearAccountCookie} from './lib/account-session.js';
 import {Hono} from 'hono';
 import {accounts} from './accounts.js';
@@ -137,7 +138,7 @@ async function route(request,env,ctx) {
     if(rest==='/admin/users'&&request.method==='GET')return json({ok:true,users:await db.listUsers(env,tenant.id)});
     if(request.method==='POST'){
       const b=await jsonBody(request);
-      if(rest==='/admin/create-user')await db.createUser(env,tenant.id,b,user);
+      if(rest==='/admin/create-user'){b.email=normalizeEmail(b.email);await db.createUser(env,tenant.id,b,user);}
       else if(rest==='/admin/delete-user')await db.deleteUser(env,tenant.id,b.userId,user);
       else if(rest==='/admin/users/permissions')await db.setPermissions(env,tenant.id,b.userId,b.gateIds,user);
       else if(rest==='/admin/users/reset')await db.resetSecret(env,tenant.id,b.userId,b.secret,user);

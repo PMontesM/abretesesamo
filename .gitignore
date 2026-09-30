@@ -29,4 +29,3 @@ __pycache__/
 
 frontend/dist/
 frontend/src/compiled.css
-frontend/legacy/compiled.css

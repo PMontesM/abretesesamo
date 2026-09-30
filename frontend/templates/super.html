@@ -9,7 +9,7 @@
       <div class="w-9 h-9 bg-white/10 flex items-center justify-center text-white"><i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i></div>
       <span class="ml-3 text-white text-sm font-bold tracking-wider">PORTONSMART</span>
     </div>
-    <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin"><div x-data="buildingPicker" class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"><label x-show="linked && options.length > 1" class="block text-xs">Edificio que controlas<select x-ref="buildingSelect" x-model="selected" @change="change()" class="w-full mt-2 border p-2 text-sm"><template x-for="o in options" :key="o.url"><option :value="o.url" x-text="o.label"></option></template></select></label><a :href="accountLink" class="block text-xs underline mt-2" x-text="linked ? 'Mi cuenta y edificios' : 'Activar acceso único con correo'"></a></div>
+    <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin"><div x-data="buildingPicker" class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"><label x-show="linked && options.length > 1" class="block text-xs">Edificio que controlas<select x-ref="buildingSelect" x-model="selected" @change="change()" class="w-full mt-2 border p-2 text-sm"><template x-for="o in options" :key="o.url"><option :value="o.url" x-text="o.label"></option></template></select></label><a :href="accountLink" class="block text-xs underline mt-2" x-text="'Mi cuenta y edificios'"></a></div>
       <p class="px-3 text-xs font-medium text-white/50 mb-2">Plataforma</p>
       <a href="?section=resumen" @click.prevent="goTo('resumen')" :aria-current="page === 'resumen' ? 'page' : null" :class="page === 'resumen' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span><span class="ml-2">Resumen</span></a>
@@ -24,13 +24,13 @@
       <p class="px-3 text-xs font-medium text-white/50 mt-6 mb-2">Cuentas</p>
       <a href="?section=administradores" @click.prevent="goTo('administradores')" :aria-current="page === 'administradores' ? 'page' : null" :class="page === 'administradores' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span><span class="ml-2">Administradores</span></a>
-      <a href="/platform/admin?view=reports" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=reports" @click.prevent="goTo('reports')" :aria-current="page === 'reports' ? 'page' : null" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i></span><span class="ml-2">Reportes</span></a>
 
       <p class="px-3 text-xs font-medium text-white/50 mt-6 mb-2">Sistema</p>
-      <a href="/platform/admin?view=configuration" class="on-dark flex items-center px-3 py-3 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="on-dark flex items-center px-3 py-3 text-white/80 hover:bg-white/5 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Configuración</span></a>
-      <a href="/platform/admin?view=account" class="block px-3 py-3 text-sm text-white/80">Mi cuenta y contraseña</a>
+      <a href="/account" class="block px-3 py-3 text-sm text-white/80">Mi cuenta y contraseña</a>
     </nav>
     <div class="p-4 border-t border-white/10">
       <div class="bg-white/5 p-3 flex items-center gap-3">
@@ -39,7 +39,7 @@
           <p class="text-xs font-semibold text-white truncate" x-text="user.username"></p>
           <p class="text-xs text-white/60 truncate">Super admin</p>
         </div>
-        <button class="on-dark text-white/60 hover:text-white" @click="logout()" aria-label="Cerrar sesión"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+        <button class="on-dark text-white/60 hover:text-white" @click="logout()" aria-label="Cerrar sesión"><span class="text-xs">Cerrar sesión</span><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
       </div>
     </div>
   </aside>
@@ -117,7 +117,7 @@
         </div>
       </section>
 
-<section x-show="page === 'pendientes'" x-cloak data-panel-page="pendientes" id="pendientes" class="bg-white shadow-soft p-6"><h2 class="font-bold text-material-dark">Pendientes de revisión</h2><p class="text-sm mt-2">Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar no acciona el relé.</p><template x-for="b in pendingBuildings" :key="b.id"><div class="mt-3 flex justify-between gap-4 border-t pt-3"><span><strong x-text="b.name"></strong> · <span x-text="b.pending"></span> registros pendientes</span><button @click="enter(b)" class="text-sm underline">Revisar edificio</button></div></template><p x-show="pendingTotal === 0" class="mt-3 text-sm">No hay órdenes pendientes de revisión.</p></section>
+<section x-show="page === 'pendientes'" x-cloak data-panel-page="pendientes" id="pendientes" class="bg-white shadow-soft p-6"><h2 class="font-bold text-material-dark">Pendientes de revisión</h2><p class="text-sm mt-2">Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar no acciona el relé.</p><template x-for="b in pendingBuildings" :key="b.id"><div class="mt-3 flex justify-between gap-4 border-t pt-3"><span><strong x-text="b.name"></strong> · <span x-text="b.pending"></span> registros pendientes</span><button @click="enter(b,'review')" class="text-sm underline">Revisar edificio</button></div></template><p x-show="pendingTotal === 0" class="mt-3 text-sm">No hay órdenes pendientes de revisión.</p></section>
       <!-- EDIFICIOS -->
       <section x-show="page === 'edificios'" x-cloak data-panel-page="edificios" id="edificios" class="" aria-labelledby="t-edif">
         <div class="relative bg-white shadow-soft">
@@ -200,7 +200,7 @@
         </div>
       </section>
 
-<section x-show="page === 'administradores'" x-cloak data-panel-page="administradores" id="administradores" class="bg-white p-6 shadow-soft"><h2 class="font-bold text-material-dark">Administradores de edificios</h2><template x-for="b in buildings" :key="b.id"><div class="mt-3 border-t pt-3 flex justify-between gap-4"><div><strong x-text="b.name"></strong><p class="text-sm" x-text="b.admin"></p></div><button @click="enter(b)" class="text-sm underline">Gestionar cuentas</button></div></template></section><div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm"><a href="/platform/admin?view=configuration" class="underline">Inventario, registro y asignación de relés</a><a href="/platform/admin?view=configuration" class="underline">Configurar MQTT</a></div>
+<section x-show="page === 'administradores'" x-cloak data-panel-page="administradores" id="administradores" class="bg-white p-6 shadow-soft"><h2 class="font-bold text-material-dark">Administradores de edificios</h2><template x-for="b in buildings" :key="b.id"><div class="mt-3 border-t pt-3 flex justify-between gap-4"><div><strong x-text="b.name"></strong><p class="text-sm" x-text="b.admin"></p></div><button @click="enter(b,'users')" class="text-sm underline">Gestionar cuentas</button></div></template></section><div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm"><a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="underline">Inventario, registro y asignación de relés</a><a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="underline">Configurar MQTT</a></div>
       <!-- FLOTA -->
       <section x-show="page === 'flota'" x-cloak data-panel-page="flota" id="flota" class="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Flota de dispositivos">
 
@@ -247,6 +247,7 @@
       </section>
 
       <!-- AUDITORÍA -->
+<section x-show="page === 'configuration' || page === 'reports' || page === 'building' || page === 'new'" x-cloak><div id="management-root"></div></section>
       <section x-show="page === 'auditoria'" x-cloak data-panel-page="auditoria" id="auditoria" class="" aria-labelledby="t-aud">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">

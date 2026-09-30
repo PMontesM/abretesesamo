@@ -5,7 +5,7 @@ export function initNavigation(panel,pages,fallback,aliases={}){
 }
 export function navigate(panel,id,push=true){
  if(!panel._pages?.includes(id))return;
- panel.page=id;if(panel._pages.includes(panel.tab))panel.tab=id;panel.drawer=false;
+ panel.page=id;panel.afterNavigation?.(id);if(panel._pages.includes(panel.tab))panel.tab=id;panel.drawer=false;
  if(push){const url=new URL(location.href);url.searchParams.delete('view');url.searchParams.set('section',id);url.hash='';if(url.href!==location.href)history.pushState(null,'',url);}
  panel.$nextTick(()=>{const main=document.getElementById('main-scroll');main?.scrollTo({top:0,behavior:'instant'});if(push){const heading=document.querySelector('[data-panel-page="'+id+'"] h2');if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true});}}});
 }

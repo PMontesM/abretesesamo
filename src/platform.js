@@ -1,3 +1,4 @@
+import {normalizeEmail} from './lib/account-provision.js';
 import {clearAccountCookie} from './lib/account-session.js';
 import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {turnstileConfig} from './lib/turnstile.js';
@@ -10,12 +11,12 @@ import * as db from './lib/db.js';
 import { login, createSessionCookie, clearSessionCookie, verifySession } from './lib/auth.js';
 import { jsonBody, username, InputError, hashSecret, verifySecret } from './lib/security.js';
 import { takeAttempt } from './lib/ratelimit.js';
-import { getPlatformLoginHTML, getPlatformAdminHTML } from './html/platform.js';
+import { getPlatformAdminHTML } from './html/platform.js';
 const json=body=>Response.json({ok:true,...body});
 const html=body=>new Response(body,{headers:{'Content-Type':'text/html; charset=utf-8'}});
 export async function handlePlatform(request,env,ctx,url){
   const rest=url.pathname.replace(/^\/platform/,'')||'/';
-  if(rest==='/'&&request.method==='GET')return html(getPlatformLoginHTML(turnstileConfig(env)));
+  if(rest==='/'&&request.method==='GET')return Response.redirect(url.origin+'/login',302);
   if(rest==='/login'&&request.method==='POST'){
     const ip=request.headers.get('cf-connecting-ip')||'unknown';
     if(!await takeAttempt(env,`platform:${ip}`,10))return Response.json({ok:false,error:'Demasiados intentos. Espera cinco minutos.'},{status:429});
@@ -79,7 +80,7 @@ export async function handlePlatform(request,env,ctx,url){
       return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie(true)}});
     }
     if(rest==='/api/tenants'){
-      const id=await db.createTenant(env,b,admin);return json({tenantId:id,slug:(await db.tenantById(env,id)).slug});
+      b.masterEmail=normalizeEmail(b.masterEmail);const id=await db.createTenant(env,b,admin);return json({tenantId:id,slug:(await db.tenantById(env,id)).slug});
     }
     const tenantId=b.tenantId;
     if(!tenantId||!await db.tenantById(env,tenantId))throw new InputError('Edificio inexistente');
@@ -98,7 +99,7 @@ export async function handlePlatform(request,env,ctx,url){
     }else if(rest==='/api/gates'){
       detail.gateId=await db.saveGate(env,tenantId,b,admin);detail.status=b.status||'active';
     }else if(rest==='/api/users'){
-      detail.userId=await db.createUser(env,tenantId,b,admin);
+      b.email=normalizeEmail(b.email);detail.userId=await db.createUser(env,tenantId,b,admin);
     }else if(rest==='/api/users/delete'){
       await db.deleteUser(env,tenantId,b.userId,admin);detail.userId=b.userId;
     }else if(rest==='/api/users/permissions'){

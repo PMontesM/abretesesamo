@@ -1,0 +1,3 @@
+import {InputError} from './security.js';
+export function normalizeEmail(value){const email=String(value||'').trim().toLowerCase();if(email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email))throw new InputError('Escribe un correo electrónico válido');return email;}
+export function provisionStatements(env,email,secret,userId,tenantId){if(!email)return [];email=normalizeEmail(email);return [env.DB.prepare('INSERT INTO accounts(id,email,secret,created_at) VALUES(?,?,?,?) ON CONFLICT(email) DO NOTHING').bind(crypto.randomUUID(),email,secret,Date.now()),env.DB.prepare('INSERT INTO account_memberships(account_id,user_id,tenant_id) SELECT id,?,? FROM accounts WHERE email=?').bind(userId,tenantId,email)];}

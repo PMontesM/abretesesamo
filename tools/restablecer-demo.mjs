@@ -7,12 +7,12 @@ const origin=new URL(originArg).origin;if(!origin.startsWith('https://'))throw E
 const out=resolve(outArg);mkdirSync(out,{recursive:true});
 const sql=[],q=x=>x===null?'NULL':typeof x==='number'?String(x):"'"+String(x).replaceAll("'","''")+"'";
 const insert=(table,data)=>sql.push(`INSERT INTO ${table}(${Object.keys(data).join(',')}) VALUES(${Object.values(data).map(q).join(',')});`);
-// Explicit reset of tenant data; preserve platform identities and MQTT inventory/settings.
+// Explicit reset of tenant data; preserve platform identities and encrypted MQTT settings; remove relay inventory.
 for(const table of ['code_gates','logs','direct_operations','relay_commands','codes','user_gates','account_memberships','users','gates','tenants'])sql.push('DELETE FROM '+table+';');
 sql.push('DELETE FROM accounts WHERE NOT EXISTS(SELECT 1 FROM account_platform p WHERE p.account_id=accounts.id);');
 sql.push('DELETE FROM login_attempts;');
 sql.push('DELETE FROM relay_observations;');
-sql.push("UPDATE relay_devices SET connection_state='unknown',checked_at=NULL,sampled_at=NULL,rssi=NULL,pulse_ms=NULL;");
+sql.push('DELETE FROM relay_devices;');
 sql.push('DELETE FROM platform_audit_log;');
 const now=Date.now(),tenantId=randomUUID();
 insert('tenants',{id:tenantId,slug:'residencial-demo',name:'Residencial Aurora · DEMO',status:'active',created_at:now});
