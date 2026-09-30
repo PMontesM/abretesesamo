@@ -95,10 +95,11 @@ test('desactivar portón revoca códigos; reactivar no los restaura',async()=>{
 test('cambiar contraseña invalida sesión y borrar usuario invalida sesión y códigos',async()=>{
  await json(await req('/t/alpha/admin/create-user',{username:'new',email:'new@example.com',secret:'password-new',gateIds:['g1']}));
  const u=sqlite.prepare("SELECT id FROM users WHERE username='new'").get();
- let r=await req('/t/alpha/api/login',{username:'new',email:'new@example.com',secret:'password-new'},null);await json(r);let c=r.headers.get('Set-Cookie').split(';')[0];
- await json(await req('/t/alpha/admin/users/reset',{userId:u.id,secret:'password-next'}));
+ let r=await req('/account/login',{email:'new@example.com',secret:'password-new'},null);await json(r);let c=r.headers.get('Set-Cookie').split(';')[0];
+ assert.equal((await req('/t/alpha/admin/users/reset',{userId:u.id,secret:'password-next'})).status,400);
+ await json(await req('/account/password',{currentSecret:'password-new',secret:'password-next',confirmSecret:'password-next'},c));
  assert.equal((await req('/t/alpha/admin/gates',undefined,c)).status,401);
- r=await req('/t/alpha/api/login',{username:'new',secret:'password-next'},null);await json(r);c=r.headers.get('Set-Cookie').split(';')[0];
+ r=await req('/account/login',{email:'new@example.com',secret:'password-next'},null);await json(r);c=r.headers.get('Set-Cookie').split(';')[0];
  const d=await json(await req('/t/alpha/admin/create-code',{gateId:'g1',label:'Borrar',days:1,singleUse:false},c));
  await json(await req('/t/alpha/admin/delete-user',{userId:u.id}));
  assert.equal((await req('/t/alpha/admin/gates',undefined,c)).status,401);
