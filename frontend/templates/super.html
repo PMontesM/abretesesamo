@@ -11,18 +11,18 @@
     </div>
     <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin"><div x-data="buildingPicker" class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"><label x-show="linked && options.length > 1" class="block text-xs">Edificio que controlas<select x-ref="buildingSelect" x-model="selected" @change="change()" class="w-full mt-2 border p-2 text-sm"><template x-for="o in options" :key="o.url"><option :value="o.url" x-text="o.label"></option></template></select></label><a :href="accountLink" class="block text-xs underline mt-2" x-text="linked ? 'Mi cuenta y edificios' : 'Activar acceso único con correo'"></a></div>
       <p class="px-3 text-xs font-medium text-white/50 mb-2">Plataforma</p>
-      <a href="#resumen" @click="drawer = false" aria-current="page" class="on-dark flex items-center px-3 py-3 bg-white/10 text-white font-medium text-sm">
+      <a href="?section=resumen" @click.prevent="goTo('resumen')" :aria-current="page === 'resumen' ? 'page' : null" :class="page === 'resumen' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span><span class="ml-2">Resumen</span></a>
-      <a href="#edificios" @click="drawer = false" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=edificios" @click.prevent="goTo('edificios')" :aria-current="page === 'edificios' ? 'page' : null" :class="page === 'edificios' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-city" aria-hidden="true"></i></span><span class="ml-2">Edificios</span></a>
-      <a href="#flota" @click="drawer = false" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=flota" @click.prevent="goTo('flota')" :aria-current="page === 'flota' ? 'page' : null" :class="page === 'flota' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-microchip" aria-hidden="true"></i></span><span class="ml-2 leading-tight">Dispositivos y firmware</span>
         <span x-show="offline.length" x-cloak class="ml-auto min-w-5 h-5 px-1 bg-amber-400 text-material-darker text-xs font-bold flex items-center justify-center" x-text="offline.length"></span></a>
-      <a href="#auditoria" @click="drawer = false" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=auditoria" @click.prevent="goTo('auditoria')" :aria-current="page === 'auditoria' ? 'page' : null" :class="page === 'auditoria' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i></span><span class="ml-2">Auditoría</span></a>
 
       <p class="px-3 text-xs font-medium text-white/50 mt-6 mb-2">Cuentas</p>
-      <a href="#administradores" @click="drawer = false" class="on-dark flex items-center px-3 py-3 text-white/80 hover:bg-white/5 font-medium text-sm">
+      <a href="?section=administradores" @click.prevent="goTo('administradores')" :aria-current="page === 'administradores' ? 'page' : null" :class="page === 'administradores' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span><span class="ml-2">Administradores</span></a>
       <a href="/platform/admin?view=reports" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
         <span class="w-6 flex justify-center"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i></span><span class="ml-2">Reportes</span></a>
@@ -46,7 +46,7 @@
   <div x-show="drawer" x-cloak @click="drawer = false" class="fixed inset-0 bg-black/30 z-30 md:hidden" x-transition.opacity></div>
 
   <!-- MAIN -->
-  <main id="resumen" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin">
+  <main id="main-scroll" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin">
 
     <div class="sticky top-0 z-20 bg-material-bg/90 backdrop-blur-sm">
       <header class="py-4 px-5 md:px-8 flex justify-between items-center">
@@ -68,7 +68,7 @@
 
 <div class="flex justify-end mb-4"><button @click="refresh()" :disabled="loading" class="text-sm underline">Actualizar datos</button></div><p x-show="error" x-text="error" role="alert" class="mb-4 p-4 bg-red-50 text-red-800"></p><p x-show="loading" role="status">Cargando…</p>
       <!-- ALERTAS -->
-      <section aria-label="Alertas" class="space-y-3">
+      <section x-show="page === 'resumen'" x-cloak aria-label="Alertas" class="space-y-3">
         <template x-for="a in alerts" :key="a.id">
           <div class="bg-white shadow-soft border-l-4 border-amber-500 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4" role="alert">
             <div class="w-10 h-10 shrink-0 bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></div>
@@ -86,7 +86,7 @@
       </section>
 
       <!-- KPIs -->
-      <section class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10" aria-label="Resumen de la plataforma">
+      <section x-show="page === 'resumen'" x-cloak data-panel-page="resumen" class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10" aria-label="Resumen de la plataforma">
         <div class="relative bg-white shadow-soft p-4 pt-9 sm:pt-4">
           <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-city" aria-hidden="true"></i></div>
           <p class="text-sm text-gray-500">Edificios activos</p>
@@ -113,13 +113,13 @@
           <p class="text-sm text-gray-500">Pendientes de revisión</p>
           <p class="text-3xl font-bold text-material-dark mt-1"><span x-text="pendingTotal"></span></p>
           <hr class="my-3 border-material-border">
-          <p class="text-xs"><a href="#pendientes" class="font-bold text-amber-600">Revisar órdenes pendientes</a></p>
+          <p class="text-xs"><a href="?section=pendientes" @click.prevent="goTo('pendientes')" class="font-bold text-amber-600">Revisar órdenes pendientes</a></p>
         </div>
       </section>
 
-<section id="pendientes" class="mt-10 bg-white shadow-soft p-6"><h2 class="font-bold text-material-dark">Pendientes de revisión</h2><p class="text-sm mt-2">Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar no acciona el relé.</p><template x-for="b in pendingBuildings" :key="b.id"><div class="mt-3 flex justify-between gap-4 border-t pt-3"><span><strong x-text="b.name"></strong> · <span x-text="b.pending"></span> registros pendientes</span><button @click="enter(b)" class="text-sm underline">Revisar edificio</button></div></template><p x-show="pendingTotal === 0" class="mt-3 text-sm">No hay órdenes pendientes de revisión.</p></section>
+<section x-show="page === 'pendientes'" x-cloak data-panel-page="pendientes" id="pendientes" class="bg-white shadow-soft p-6"><h2 class="font-bold text-material-dark">Pendientes de revisión</h2><p class="text-sm mt-2">Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar no acciona el relé.</p><template x-for="b in pendingBuildings" :key="b.id"><div class="mt-3 flex justify-between gap-4 border-t pt-3"><span><strong x-text="b.name"></strong> · <span x-text="b.pending"></span> registros pendientes</span><button @click="enter(b)" class="text-sm underline">Revisar edificio</button></div></template><p x-show="pendingTotal === 0" class="mt-3 text-sm">No hay órdenes pendientes de revisión.</p></section>
       <!-- EDIFICIOS -->
-      <section id="edificios" class="mt-14" aria-labelledby="t-edif">
+      <section x-show="page === 'edificios'" x-cloak data-panel-page="edificios" id="edificios" class="" aria-labelledby="t-edif">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
             <h2 id="t-edif" class="text-white font-bold text-base">Edificios</h2>
@@ -200,9 +200,9 @@
         </div>
       </section>
 
-<section id="administradores" class="mt-10 bg-white p-6 shadow-soft"><h2 class="font-bold text-material-dark">Administradores de edificios</h2><template x-for="b in buildings" :key="b.id"><div class="mt-3 border-t pt-3 flex justify-between gap-4"><div><strong x-text="b.name"></strong><p class="text-sm" x-text="b.admin"></p></div><button @click="enter(b)" class="text-sm underline">Gestionar cuentas</button></div></template></section><div class="mt-8 flex gap-4 text-sm"><a href="/platform/admin?view=configuration" class="underline">Inventario, registro y asignación de relés</a><a href="/platform/admin?view=configuration" class="underline">Configurar MQTT</a></div>
+<section x-show="page === 'administradores'" x-cloak data-panel-page="administradores" id="administradores" class="bg-white p-6 shadow-soft"><h2 class="font-bold text-material-dark">Administradores de edificios</h2><template x-for="b in buildings" :key="b.id"><div class="mt-3 border-t pt-3 flex justify-between gap-4"><div><strong x-text="b.name"></strong><p class="text-sm" x-text="b.admin"></p></div><button @click="enter(b)" class="text-sm underline">Gestionar cuentas</button></div></template></section><div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm"><a href="/platform/admin?view=configuration" class="underline">Inventario, registro y asignación de relés</a><a href="/platform/admin?view=configuration" class="underline">Configurar MQTT</a></div>
       <!-- FLOTA -->
-      <section id="flota" class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Flota de dispositivos">
+      <section x-show="page === 'flota'" x-cloak data-panel-page="flota" id="flota" class="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Flota de dispositivos">
 
         <div class="bg-white shadow-soft p-5 md:p-6">
           <h2 class="text-material-dark font-bold text-base">Versión de firmware</h2>
@@ -247,7 +247,7 @@
       </section>
 
       <!-- AUDITORÍA -->
-      <section id="auditoria" class="mt-14" aria-labelledby="t-aud">
+      <section x-show="page === 'auditoria'" x-cloak data-panel-page="auditoria" id="auditoria" class="" aria-labelledby="t-aud">
         <div class="relative bg-white shadow-soft">
           <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
             <h2 id="t-aud" class="text-white font-bold text-base">Auditoría</h2>

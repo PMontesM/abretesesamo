@@ -1,3 +1,4 @@
+import {initNavigation,navigate,destroyNavigation} from './navigation.js';
 import {api,base,config,date} from './api.js';
 import {adminApp} from './presentation.js';
 const merge=(target,...parts)=>{for(const p of parts)Object.defineProperties(target,Object.getOwnPropertyDescriptors(p));return target;};
@@ -14,14 +15,14 @@ export function buildingAdmin(resident,pass){
   cancelUser(){this.userModal=null;this.userForm.secret='';},
   get residentCount(){return this.users.filter(u=>u.role!=='master').length;},
   get chartTicks(){return Array.from({length:5},(_,i)=>Math.round(i*this.chartMax/4));},
-  async init(){await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);const views={users:'residentes',codes:'pases',passes:'pases',logs:'actividad',gates:'accesos'};const target=views[config.view]||location.hash.slice(1);if(['inicio','residentes','pases','actividad','accesos','configuracion'].includes(target))this.goTo(target);},
+  async init(){initNavigation(this,['inicio','residentes','pases','actividad','accesos'],'inicio',{users:'residentes',codes:'pases',passes:'pases',logs:'actividad',gates:'accesos'});await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);},
   load(data){baseLoad.call(this,data);this.summary=data.summary;this.hoy=Array(24).fill(0);this.ayer=Array(24).fill(0);for(const h of data.hours)(h.day==='today'?this.hoy:this.ayer)[h.hour]=h.count;this.chartMax=Math.max(4,...this.hoy,...this.ayer);
    this.doors=this.doors.map(g=>{const samples=data.observations.filter(o=>o.gate_id===g.id),latest=samples.at(-1),hour=Math.floor(this.now/3600000)*3600000;return {...g,deviceId:g.deviceId||'',rssi:latest?.rssi??null,uptime:latest?.uptime_s!=null?Math.floor(latest.uptime_s/3600)+' h '+Math.floor(latest.uptime_s/60)%60+' min':'Sin datos',cells:Array.from({length:24},(_,i)=>{const o=samples.find(s=>s.hour===hour-(23-i)*3600000);return !o?'unknown':o.state==='offline'?'down':['online','opening','cooldown'].includes(o.state)?'ok':'unknown';})};});
    this.alerts=this.doors.filter(d=>d.connection_checked_at>this.now-120000&&(d.connection_state==='offline'||d.rssi!==null&&d.rssi<=-75)).map(d=>({id:d.id+':'+d.connection_checked_at,device:d.id,title:d.name,body:d.connection_state==='offline'?'Sin conexión en la última consulta':'Señal Wi-Fi débil en la última consulta'})).filter(a=>!this.dismissed.includes(a.id));
   },
   async refresh(){if(this.busy)return;this.busy=true;await this.run(async()=>{const [panel,people]=await Promise.all([api('/admin/panel?offset='+new Date().getTimezoneOffset()),api('/admin/users')]);this.load(panel);this.users=people.users;});this.busy=false;this.loading=false;await this.loadCodePage();},
-  goTo(id){this.tab=id;this.drawer=false;this.$nextTick(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth'}));},
-  openSettings(){this.settingsOpen=true;this.drawer=false;this.tab='configuracion';},
+  goTo(id){navigate(this,id);},
+  openSettings(){this.settingsOpen=true;this.drawer=false;},
   closePanels(){baseClose.call(this);this.userModal=null;this.userForm.secret='';this.welcome=null;this.actionConfirmation=null;this.settingsOpen=false;},
   get filteredUsers(){const q=this.userQuery.toLowerCase().trim();return this.users.filter(u=>u.username.toLowerCase().includes(q));},
   userAccess(u){return this.doors.filter(d=>u.role==='master'||u.gateIds.includes(d.id)).map(d=>d.name).join(', ')||'Sin accesos asignados';},

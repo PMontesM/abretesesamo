@@ -1,3 +1,4 @@
+import {initNavigation,navigate,destroyNavigation} from './navigation.js';
 import {buildingPicker} from './building-picker.js';
 import {buildingAdmin} from './admin-panel.js';
 import {superApp} from './super.js';
@@ -16,10 +17,10 @@ const common={
  async logout(){await this.run(async()=>{await api('/admin/logout',{});location.href='/login';});},
  profile(){infoDialog('Mi perfil',this.user.username+'\n'+this.tenant.name+'\n'+(this.user.role==='master'?'Administrador del edificio':'Residente')+'\nPara cambiar tu contraseña, contacta al administrador.');},
  support(){if(this.tenant.supportPhone)window.open('https://wa.me/'+this.tenant.supportPhone,'_blank','noopener');else infoDialog('Soporte','Contacta a la administración del edificio para recibir ayuda con tus accesos.');},
- notifications(){if(this.alerts?.length){document.getElementById('main-scroll').scrollTo({top:0,behavior:'smooth'});}else if(this.livePasses?.some(p=>this.expiring(p))){document.getElementById('pases').scrollIntoView();}else infoDialog('Notificaciones','No hay avisos nuevos en los datos de tu última consulta.');},
+ notifications(){if(this.alerts?.length){this.goTo('inicio');}else if(this.livePasses?.some(p=>this.expiring(p))){this.selectTab('pases');}else infoDialog('Notificaciones','No hay avisos nuevos en los datos de tu última consulta.');},
  async refresh(){if(this.busy)return;this.busy=true;await this.run(async()=>this.load(await api('/admin/panel?offset='+new Date().getTimezoneOffset())));this.busy=false;this.loading=false;},
- async init(){await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);},
- destroy(){clearInterval(this._clock);for(const d of this.doors||[]){cancelAnimationFrame(d._raf);clearInterval(d._iv);}clearTimeout(this._arm);clearTimeout(this._tt);},
+ async init(){initNavigation(this,['accesos','pases','actividad'],'accesos',{codes:'pases',logs:'actividad'});await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);},
+ destroy(){destroyNavigation(this);clearInterval(this._clock);for(const d of this.doors||[]){cancelAnimationFrame(d._raf);clearInterval(d._iv);}clearTimeout(this._arm);clearTimeout(this._tt);},
  hourLabel(i){return String(i).padStart(2,'0');},
  percent(p){return Math.round(this.pct(p));},
  confirmRevoke(p){this.arm('r'+p.id,()=>this.revoke(p));},
@@ -43,7 +44,7 @@ get confirmName(){return this.confirmTarget?.name||'';},resultCard:null,confirmT
  async send(id){const d=this.door(id);if(d.state==='abriendo'||d.state==='abierto')return;cancelAnimationFrame(d._raf);d.state='abriendo';d.progress=100;try{const result=await openGate(id);d.state='abierto';this.live=result.message;setTimeout(()=>{d.state='reposo';d.progress=0;},6500);}catch(e){d.state='error';d.progress=0;this.error=e.message;this.live=e.message;}},
  confirmDoor(d){this.confirmTarget=d;},confirmSend(){const d=this.confirmTarget;this.confirmTarget=null;if(d)this.send(d.id);},
  openSheet(){this.durationDays='1';this.customDays=1;this.form={name:'',type:'Visita',mins:120,mode:'visit',doors:this.doors.length===1?[this.doors[0].id]:[]};this.formError='';this.sheet=true;this.$nextTick(()=>this.$refs.name?.focus());},
- closePanels(){this.drawer=false;this.sheet=false;this.resultCard=null;this.confirmTarget=null;},selectTab(tab){this.drawer=false;this.tab=tab;},
+ closePanels(){this.drawer=false;this.sheet=false;this.resultCard=null;this.confirmTarget=null;},selectTab(tab){navigate(this,tab);},
  deadlineBody(){if(this.form.mode==='unlimited')return {};if(this.form.mode==='visit')return {days:7};const days=this.durationDays==='custom'?Number(this.customDays):Number(this.durationDays);if(!Number.isInteger(days)||days<1||days>30)throw Error('Elige de 1 a 30 días');return {days};},
  get visibleActivity(){const q=this.activityQuery.trim().toLowerCase();return this.activity.filter(a=>(this.filter!=='rechazados'||!a.ok)&&(!this.activityGate||a.gateId===this.activityGate)&&(!this.activityResult||a.outcome===this.activityResult)&&(!q||(a.title+' '+a.meta+' '+a.code+' '+a.owner).toLowerCase().includes(q)));},
  exportActivity(){csvDownload([['Actividad','Referencia','Código','Usuario','Resultado','Fecha'],...this.visibleActivity.map(a=>[a.title,a.meta,a.code,a.owner,outcome[a.outcome]||a.outcome,a.time])]);},
