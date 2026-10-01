@@ -1,3 +1,4 @@
+import {profilePanel} from './profile.js';
 import {initNavigation,navigate,destroyNavigation} from './navigation.js';
 import {buildingPicker} from './building-picker.js';
 import {buildingAdmin} from './admin-panel.js';
@@ -15,11 +16,11 @@ const common={
  get noticeCount(){return this.alerts?.length||this.livePasses?.filter(p=>this.expiring(p)).length||0;},
  async run(fn){try{return await fn();}catch(e){this.error=e.message;return null;}},
  async logout(){await this.run(async()=>{await api('/admin/logout',{});location.href='/login';});},
- profile(){location.href='/account';},
+ profile(){this.goTo('profile');},goTo(id){navigate(this,id);},
  support(){if(this.tenant.supportPhone)window.open('https://wa.me/'+this.tenant.supportPhone,'_blank','noopener');else infoDialog('Soporte','Contacta a la administración del edificio para recibir ayuda con tus accesos.');},
  notifications(){if(this.alerts?.length){this.goTo('inicio');}else if(this.livePasses?.some(p=>this.expiring(p))){this.selectTab('pases');}else infoDialog('Notificaciones','No hay avisos nuevos en los datos de tu última consulta.');},
  async refresh(){if(this.busy)return;this.busy=true;await this.run(async()=>this.load(await api('/admin/panel?offset='+new Date().getTimezoneOffset())));this.busy=false;this.loading=false;},
- async init(){initNavigation(this,['accesos','pases','actividad'],'accesos',{codes:'pases',logs:'actividad'});await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);},
+ async init(){initNavigation(this,['accesos','pases','actividad','profile'],'accesos',{codes:'pases',logs:'actividad'});await this.refresh();this._clock=setInterval(()=>{this.now=Date.now();},15000);},
  destroy(){destroyNavigation(this);clearInterval(this._clock);for(const d of this.doors||[]){cancelAnimationFrame(d._raf);clearInterval(d._iv);}clearTimeout(this._arm);clearTimeout(this._tt);},
  hourLabel(i){return String(i).padStart(2,'0');},
  percent(p){return Math.round(this.pct(p));},
@@ -55,4 +56,4 @@ get confirmName(){return this.confirmTarget?.name||'';},resultCard:null,confirmT
  share(p){window.open('https://wa.me/?text='+encodeURIComponent(this.text(p)),'_blank','noopener');},
 });}
 function admin(){return buildingAdmin(resident,pass);}
-Alpine.plugin(focus);Alpine.data('buildingPicker',buildingPicker);Alpine.data('superadmin',superApp);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();
+Alpine.plugin(focus);Alpine.data('profilePanel',profilePanel);Alpine.data('buildingPicker',buildingPicker);Alpine.data('superadmin',superApp);Alpine.data('resident',resident);Alpine.data('admin',admin);window.Alpine=Alpine;Alpine.start();

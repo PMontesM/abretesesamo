@@ -78,3 +78,7 @@ Revocar y resolver usan referencias cifradas, vinculadas a la cuenta y al edific
 ## Interfaz única
 
 No se publica una segunda interfaz. Configuración MQTT, inventario, reportes y la gestión de cada edificio se muestran en el panel actual, con tarjetas adaptadas al celular. Dentro de cada edificio hay cuatro secciones explícitas: Portones, Usuarios, Códigos y Revisiones. Los accesos desde Administradores y Pendientes abren la sección correspondiente. Login y visitantes comparten los estilos de entrada de PortonSmart.
+
+## Mi perfil integrado
+
+Mi perfil es una sección de los tres paneles (`?section=profile`), con el mismo menú y márgenes móviles. Muestra el correo y permite cambiar la contraseña global. Tras guardarla se informa del cierre de sesión y se ofrece volver a entrar. El selector de edificios permanece en el menú; no hay enlaces duplicados a otra pantalla de cuenta.
