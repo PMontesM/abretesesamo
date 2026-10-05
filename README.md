@@ -2,7 +2,7 @@
 
 Plataforma de control de accesos para varios edificios, con un Worker de Cloudflare, D1 y recursos estáticos. Frontend Alpine CSP con navegación por secciones y diseño para celular.
 
-- Acceso único por correo y contraseña en `/login`; selector de edificios según permisos.
+- Acceso único por teléfono y contraseña en `/login`; selector de edificios según permisos.
 - Visitantes sin cuenta en `/visit` o mediante el enlace compartido del edificio.
 - Códigos globalmente únicos, para uno o varios portones: con vigencia, visita de diez minutos y permanentes.
 - Residentes: abrir accesos, crear/copiar/compartir/revocar códigos y consultar historial.

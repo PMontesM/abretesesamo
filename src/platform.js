@@ -1,4 +1,4 @@
-import {normalizeEmail} from './lib/account-provision.js';
+import {normalizePhone} from './lib/account-provision.js';
 import {clearAccountCookie} from './lib/account-session.js';
 import {protectCodes,resolveCodeBody} from './lib/code-privacy.js';
 import {turnstileConfig} from './lib/turnstile.js';
@@ -80,7 +80,7 @@ export async function handlePlatform(request,env,ctx,url){
       return Response.json({ok:true},{headers:{'Set-Cookie':clearSessionCookie(true)}});
     }
     if(rest==='/api/tenants'){
-      b.masterEmail=normalizeEmail(b.masterEmail);const id=await db.createTenant(env,b,admin);return json({tenantId:id,slug:(await db.tenantById(env,id)).slug});
+      b.masterPhone=normalizePhone(b.masterPhone);const id=await db.createTenant(env,b,admin);return json({tenantId:id,slug:(await db.tenantById(env,id)).slug});
     }
     const tenantId=b.tenantId;
     if(!tenantId||!await db.tenantById(env,tenantId))throw new InputError('Edificio inexistente');
@@ -99,7 +99,7 @@ export async function handlePlatform(request,env,ctx,url){
     }else if(rest==='/api/gates'){
       detail.gateId=await db.saveGate(env,tenantId,b,admin);detail.status=b.status||'active';
     }else if(rest==='/api/users'){
-      b.email=normalizeEmail(b.email);detail.userId=await db.createUser(env,tenantId,b,admin);
+      b.phone=normalizePhone(b.phone);detail.userId=await db.createUser(env,tenantId,b,admin);
     }else if(rest==='/api/users/delete'){
       await db.deleteUser(env,tenantId,b.userId,admin);detail.userId=b.userId;
     }else if(rest==='/api/users/permissions'){

@@ -1,4 +1,4 @@
-import {provisionStatements} from './account-provision.js';
+import {provisionStatements,provisionPhoneStatements} from './account-provision.js';
 import {requireInventory} from './relay-inventory.js';
 import {deviceConfig} from './relay.js';
 import { takeAttempt } from './ratelimit.js';
@@ -20,7 +20,7 @@ export async function requireGate(env,user,id) {
   return gate;
 }
 export async function listUsers(env,tenantId) {
-  const users=await rows(env.DB.prepare('SELECT u.id,u.username,u.role,a.email FROM users u LEFT JOIN account_memberships m ON m.user_id=u.id LEFT JOIN accounts a ON a.id=m.account_id WHERE u.tenant_id=? ORDER BY u.created_at,u.id').bind(tenantId));
+  const users=await rows(env.DB.prepare('SELECT u.id,u.username,u.role,a.email,a.phone FROM users u LEFT JOIN account_memberships m ON m.user_id=u.id LEFT JOIN accounts a ON a.id=m.account_id WHERE u.tenant_id=? ORDER BY u.created_at,u.id').bind(tenantId));
   const permissions=await rows(env.DB.prepare('SELECT user_id,gate_id FROM user_gates WHERE tenant_id=?').bind(tenantId));
   return users.map(u=>({...u,gateIds:permissions.filter(p=>p.user_id===u.id).map(p=>p.gate_id)}));
 }
@@ -39,7 +39,7 @@ export async function createUser(env,tenantId,body,actor=null) {
   await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'user',?)").bind(id,tenantId,name,hash,Date.now()),
     ...gates.map(g=>env.DB.prepare('INSERT INTO user_gates(tenant_id,user_id,gate_id) VALUES(?,?,?)').bind(tenantId,id,g)),
-    ...provisionStatements(env,body.email,hash,id,tenantId),
+    ...(body.phone?provisionPhoneStatements(env,body.phone,hash,id,tenantId):provisionStatements(env,body.email,hash,id,tenantId)),
     ...auditStatements(env,actor,'create_user',{tenantId,userId:id,gateIds:gates})
   ]);
   return id;
@@ -92,7 +92,7 @@ export async function createTenant(env,body,actor=null) {
         env.DB.prepare("INSERT INTO tenants(id,slug,name,status,created_at) VALUES(?,?,?,'active',?)").bind(id,slug,name,Date.now()),
         env.DB.prepare('INSERT INTO gates(id,tenant_id,name,trigger_type,trigger_config,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),id,gateName,type,config,Date.now()),
         env.DB.prepare("INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'master',?)").bind(masterId,id,user,hash,Date.now()),
-        ...provisionStatements(env,body.masterEmail,hash,masterId,id),
+        ...(body.masterPhone?provisionPhoneStatements(env,body.masterPhone,hash,masterId,id):provisionStatements(env,body.masterEmail,hash,masterId,id)),
         ...auditStatements(env,actor,'create_tenant',{tenantId:id,name,slug})
       ]);
       return id;

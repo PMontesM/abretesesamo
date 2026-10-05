@@ -61,7 +61,7 @@ Se elimina la sección y enlace duplicados Todos mis códigos. Cerrar sesión ap
 La navegación usa una sola interfaz Alpine: Inicio, Portones, Residentes, Códigos, Historial y Configuración. Los enlaces antiguos de administración (`?view=users`, `codes`, `passes`, `logs` y `gates`) abren la sección correspondiente del mismo panel. Cerrar sesión está visible en el menú lateral móvil.
 
 - Portones conserva pulsación, confirmación visual y animación; comprobación de conexión e información técnica se presentan en la misma tarjeta, con detalles desplegables. Las estadísticas por hora quedan plegadas al inicio.
-- Residentes conserva alta por correo, permisos, eliminación y bienvenida por WhatsApp. Compartir una cuenta existente no revela su contraseña. Quitar accesos revoca los códigos vinculados; el titular cambia su contraseña global en Mi cuenta. Eliminar y revocar requieren un diálogo con el estilo del panel.
+- Residentes conserva alta por teléfono, permisos, eliminación y bienvenida por WhatsApp. Compartir una cuenta existente no revela su contraseña. Quitar accesos revoca los códigos vinculados; el titular cambia su contraseña global en Mi cuenta. Eliminar y revocar requieren un diálogo con el estilo del panel.
 - Códigos usa el formulario del residente y la tarjeta de resultado para copiar o compartir. La lista permite filtrar por residente, portón, estado, código o referencia. Los filtros se aplican en el servidor antes de paginar, incluyendo accesos secundarios de un pase. Cada página contiene hasta 100 códigos y se amplía con Cargar más códigos. Se conserva el aislamiento por edificio y dueño.
 - Historial muestra el portón, usuario y código, distingue los resultados, ofrece filtros y exportación CSV de los últimos 200 registros disponibles.
 - Configuración reúne el contacto de ayuda; asignación de relés y revisión de órdenes siguen en superadministración.
@@ -81,4 +81,4 @@ No se publica una segunda interfaz. Configuración MQTT, inventario, reportes y 
 
 ## Mi perfil integrado
 
-Mi perfil es una sección de los tres paneles (`?section=profile`), con el mismo menú y márgenes móviles. Muestra el correo y permite cambiar la contraseña global. Tras guardarla se informa del cierre de sesión y se ofrece volver a entrar. El selector de edificios permanece en el menú; no hay enlaces duplicados a otra pantalla de cuenta.
+Mi perfil es una sección de los tres paneles (`?section=profile`), con el mismo menú y márgenes móviles. Muestra el teléfono y permite cambiar la contraseña global. Tras guardarla se informa del cierre de sesión y se ofrece volver a entrar. El selector de edificios permanece en el menú; no hay enlaces duplicados a otra pantalla de cuenta.
