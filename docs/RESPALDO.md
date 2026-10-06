@@ -24,6 +24,12 @@ Los secretos `ADMIN_SIGNING_SECRET`, `MQTT_ENCRYPTION_KEY`, `TURNSTILE_SECRET_KE
 
 `checks.yml` ejecuta compilación, pruebas de backend y navegador en cada push y pull request. No publica automáticamente.
 
-`backup.yml` prepara un respaldo cifrado diario a las 10:00 UTC, verifica que se pueda restaurar y lo conserva como artefacto privado durante siete días. Requiere dos secretos de Actions: `CLOUDFLARE_BACKUP_TOKEN` (token Cloudflare con permiso D1 para exportar esta cuenta) y `BACKUP_ENCRYPTION_KEY`. La programación no se considera operativa hasta configurar ambos y completar una ejecución manual satisfactoria. GitHub puede retrasar tareas programadas; revisar ejecuciones y avisos de fallo. Consumen cuotas del plan de GitHub y Cloudflare.
+`backup.yml` prepara un respaldo cifrado diario a las 10:00 UTC, verifica que se pueda restaurar y lo conserva como artefacto privado durante siete días. Requiere dos secretos de Actions: `CLOUDFLARE_BACKUP_TOKEN` (token Cloudflare con permiso D1: Edit, limitado a la cuenta del proyecto) y `BACKUP_ENCRYPTION_KEY`. La programación no se considera operativa hasta configurar ambos y completar una ejecución manual satisfactoria. GitHub puede retrasar tareas programadas; revisar ejecuciones y avisos de fallo. Consumen cuotas del plan de GitHub y Cloudflare.
 
 No subir SQL, claves ni archivos `.private` al repositorio. El respaldo diario complementa el respaldo previo a cada migración/publicación; no sustituye una prueba de restauración.
+
+## Activación comprobada
+
+El 6 de octubre de 2026 se configuraron ambos secretos y terminó correctamente la [ejecución de prueba](https://github.com/PMontesM/abretesesamo/actions/runs/37425525123): exportación, cifrado, restauración local de comprobación y almacenamiento del artefacto. La exportación fue rechazada con D1: Read y funcionó con D1: Edit, ampliación autorizada por el propietario. Este permiso también permite modificar bases D1 de la cuenta; el workflow solamente exporta.
+
+Horario: diario a las 10:00 UTC (04:00 de Ciudad de México), con retención de siete días. GitHub puede retrasar la ejecución. Consultar Actions → Respaldo cifrado D1 para comprobar el último resultado y descargar la copia cifrada. La clave de recuperación debe conservarse aparte en un gestor seguro.
