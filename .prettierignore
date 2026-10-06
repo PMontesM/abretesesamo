@@ -1,0 +1,8 @@
+src/html/templates.js
+frontend/src/compiled.css
+frontend/dist
+frontend/reference
+node_modules
+frontend/node_modules
+.private
+work

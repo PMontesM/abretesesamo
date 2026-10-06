@@ -127,3 +127,6 @@ CREATE TABLE IF NOT EXISTS account_memberships(account_id TEXT NOT NULL REFERENC
 CREATE TABLE IF NOT EXISTS account_platform(account_id TEXT PRIMARY KEY REFERENCES accounts(id),admin_id TEXT UNIQUE NOT NULL REFERENCES platform_admins(id) ON DELETE CASCADE);
 
 CREATE UNIQUE INDEX IF NOT EXISTS codes_global_unique ON codes(code);
+
+CREATE TABLE IF NOT EXISTS account_recovery(token_hash TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,expires_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS account_recovery_expiry ON account_recovery(expires_at);

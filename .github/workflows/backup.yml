@@ -1,0 +1,30 @@
+name: Respaldo cifrado D1
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_BACKUP_TOKEN }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node tools/backup.mjs
+      - name: Verificar restauración
+        run: node tools/restore-check.mjs "$(find .private/backups -name '*.psbk' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-cifrado-${{ github.run_id }}
+          path: .private/backups/*.psbk
+          retention-days: 7
+          if-no-files-found: error

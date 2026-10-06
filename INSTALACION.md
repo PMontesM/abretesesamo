@@ -17,3 +17,7 @@ Para una instalación nueva con base vacía. Para actualizar la instancia existe
 MQTT se configura desde el panel de superadministración. El aprovisionamiento del broker y el firmware se documenta en [Relés MQTT](docs/RELES-MQTT.md). La Demo y su restablecimiento se describen en [Acceso único](docs/ACCESO-UNICO.md).
 
 No subir `.private/`, contraseñas, archivos de secretos ni respaldos de D1 a GitHub. Conservar un respaldo antes de cualquier limpieza de datos.
+
+## Actualizaciones de la instancia actual
+
+Usar `wrangler.production.json` y el procedimiento de [Publicación y respaldo](docs/RESPALDO.md). El esquema completo solo se aplica a bases nuevas. La migración 013 añade los enlaces de recuperación; no requiere limpiar usuarios, códigos ni relés.

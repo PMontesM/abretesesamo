@@ -1,0 +1,36 @@
+{
+  "name": "porton-saas-nuevo",
+  "account_id": "8ec51599918264f3ccde9f007c375e1f",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "keep_vars": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "porton-saas-db-nueva",
+      "database_id": "c72a2400-b0ee-4f25-8887-934db3baebc1"
+    }
+  ],
+  "assets": {
+    "directory": "frontend/dist",
+    "binding": "ASSETS"
+  },
+  "triggers": {
+    "crons": [
+      "*/15 * * * *"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "porton.inomali.com",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "PUBLIC_HOSTNAME": "porton.inomali.com",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAE-i8TlWbWhkt5g7",
+    "TURNSTILE_REQUIRED": "true"
+  }
+}

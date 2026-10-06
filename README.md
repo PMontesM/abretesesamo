@@ -9,6 +9,7 @@ Plataforma de control de accesos para varios edificios, con un Worker de Cloudfl
 - Administradores: residentes, permisos, códigos enmascarados ajenos, historial y contacto de ayuda.
 - Superadministración: edificios, portones, usuarios, revisiones, MQTT, inventario, reportes y auditoría, dentro del mismo panel.
 - Relés con protocolo 3, confirmación por comando y bloqueo de resultados inciertos.
+- Mi perfil: cambio de teléfono y contraseña; recuperación mediante enlace de un solo uso autorizado por superadministración.
 - Turnstile, límites de intentos, sesiones revocables y permisos verificados por el servidor.
 
 ## Desarrollo
@@ -29,3 +30,5 @@ Las pruebas usan datos y dispositivos simulados. Una confirmación del firmware 
 - [Respaldos](docs/RESPALDO.md)
 
 El repositorio contiene código y esquema, nunca contraseñas, secretos ni respaldos de D1. La Demo utiliza portones simulados; su restablecimiento elimina todos los edificios y relés registrados y conserva la superadministración y la configuración cifrada del broker.
+
+Publicación: `npm run db:migrate` y `npm run release`, con configuración versionada, pruebas y respaldo cifrado previo. Consultar los requisitos de GitHub Actions y respaldo diario en [Respaldos](docs/RESPALDO.md).

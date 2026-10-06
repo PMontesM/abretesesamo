@@ -1,10 +1,27 @@
-import {readFileSync,existsSync} from 'node:fs';
-import {spawnSync} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
-const flag=process.argv[2];if(!['--local','--remote'].includes(flag))throw Error('Uso: npm run db:check -- --remote (o --local)');
-const config=readFileSync(new URL('../wrangler.toml',import.meta.url),'utf8');
-const name=config.match(/^database_name\s*=\s*"([^"]+)"/m)?.[1];if(!name)throw Error('Falta database_name en wrangler.toml');
-const cli=fileURLToPath(new URL('../node_modules/wrangler/bin/wrangler.js',import.meta.url));if(!existsSync(cli))throw Error('Primero ejecuta npm install');
-const sql=readFileSync(new URL('../database/verificar.sql',import.meta.url),'utf8');
-const r=spawnSync(process.execPath,[cli,'d1','execute',name,flag,'--command',sql],{stdio:'inherit'});
-if(r.error)throw r.error;process.exitCode=r.status??1;
+import { readFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+const flag = process.argv[2];
+if (!["--local", "--remote"].includes(flag))
+  throw Error("Uso: npm run db:check -- --remote (o --local)");
+const config = readFileSync(
+  new URL("../wrangler.toml", import.meta.url),
+  "utf8",
+);
+const name = config.match(/^database_name\s*=\s*"([^"]+)"/m)?.[1];
+if (!name) throw Error("Falta database_name en wrangler.toml");
+const cli = fileURLToPath(
+  new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url),
+);
+if (!existsSync(cli)) throw Error("Primero ejecuta npm install");
+const sql = readFileSync(
+  new URL("../database/verificar.sql", import.meta.url),
+  "utf8",
+);
+const r = spawnSync(
+  process.execPath,
+  [cli, "d1", "execute", name, flag, "--command", sql],
+  { stdio: "inherit" },
+);
+if (r.error) throw r.error;
+process.exitCode = r.status ?? 1;

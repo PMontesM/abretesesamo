@@ -1,216 +1,657 @@
-<body @open-profile.window="goTo('profile')" class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
-      x-data="superadmin" @keydown.escape.window="closePanels()">
-
+<body
+  @open-profile.window="goTo('profile')"
+  class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+  x-data="superadmin"
+  @keydown.escape.window="closePanels()"
+>
   <!-- SIDEBAR (oscuro: señal de que estás en el nivel más alto de permisos) -->
-  <aside :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-         class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-material-darker flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
-         aria-label="Menú principal">
+  <aside
+    :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+    class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-material-darker flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+    aria-label="Menú principal"
+  >
     <div class="h-20 flex items-center px-6 border-b border-white/10">
-      <div class="w-9 h-9 bg-white/10 flex items-center justify-center text-white"><i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i></div>
-      <span class="ml-3 text-white text-sm font-bold tracking-wider">PORTONSMART</span>
+      <div
+        class="w-9 h-9 bg-white/10 flex items-center justify-center text-white"
+      >
+        <i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i>
+      </div>
+      <span class="ml-3 text-white text-sm font-bold tracking-wider"
+        >PORTONSMART</span
+      >
     </div>
-    <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin"><div x-data="buildingPicker" x-show="linked && options.length > 1" class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"><label x-show="linked && options.length > 1" class="block text-xs">Edificio que controlas<select x-ref="buildingSelect" x-model="selected" @change="change()" class="w-full mt-2 border p-2 text-sm"><template x-for="o in options" :key="o.url"><option :value="o.url" x-text="o.label"></option></template></select></label></div>
+    <nav class="flex-1 px-4 py-5 overflow-y-auto scrollbar-thin">
+      <div
+        x-data="buildingPicker"
+        x-show="linked && options.length > 1"
+        class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"
+      >
+        <label x-show="linked && options.length > 1" class="block text-xs"
+          >Edificio que controlas<select
+            x-ref="buildingSelect"
+            x-model="selected"
+            @change="change()"
+            class="w-full mt-2 border p-2 text-sm"
+          >
+            <template x-for="o in options" :key="o.url"
+              ><option :value="o.url" x-text="o.label"></option
+            ></template></select
+        ></label>
+      </div>
       <p class="px-3 text-xs font-medium text-white/50 mb-2">Plataforma</p>
-      <a href="?section=resumen" @click.prevent="goTo('resumen')" :aria-current="page === 'resumen' ? 'page' : null" :class="page === 'resumen' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span><span class="ml-2">Resumen</span></a>
-      <a href="?section=edificios" @click.prevent="goTo('edificios')" :aria-current="page === 'edificios' ? 'page' : null" :class="page === 'edificios' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-city" aria-hidden="true"></i></span><span class="ml-2">Edificios</span></a>
-      <a href="?section=flota" @click.prevent="goTo('flota')" :aria-current="page === 'flota' ? 'page' : null" :class="page === 'flota' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-microchip" aria-hidden="true"></i></span><span class="ml-2 leading-tight">Dispositivos y firmware</span>
-        <span x-show="offline.length" x-cloak class="ml-auto min-w-5 h-5 px-1 bg-amber-400 text-material-darker text-xs font-bold flex items-center justify-center" x-text="offline.length"></span></a>
-      <a href="?section=auditoria" @click.prevent="goTo('auditoria')" :aria-current="page === 'auditoria' ? 'page' : null" :class="page === 'auditoria' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i></span><span class="ml-2">Auditoría</span></a>
+      <a
+        href="?section=resumen"
+        @click.prevent="goTo('resumen')"
+        :aria-current="page === 'resumen' ? 'page' : null"
+        :class="page === 'resumen' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'"
+        class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span
+        ><span class="ml-2">Resumen</span></a
+      >
+      <a
+        href="?section=edificios"
+        @click.prevent="goTo('edificios')"
+        :aria-current="page === 'edificios' ? 'page' : null"
+        :class="page === 'edificios' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'"
+        class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-city" aria-hidden="true"></i></span
+        ><span class="ml-2">Edificios</span></a
+      >
+      <a
+        href="?section=flota"
+        @click.prevent="goTo('flota')"
+        :aria-current="page === 'flota' ? 'page' : null"
+        :class="page === 'flota' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'"
+        class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-microchip" aria-hidden="true"></i></span
+        ><span class="ml-2 leading-tight">Dispositivos y firmware</span>
+        <span
+          x-show="offline.length"
+          x-cloak
+          class="ml-auto min-w-5 h-5 px-1 bg-amber-400 text-material-darker text-xs font-bold flex items-center justify-center"
+          x-text="offline.length"
+        ></span
+      ></a>
+      <a
+        href="?section=auditoria"
+        @click.prevent="goTo('auditoria')"
+        :aria-current="page === 'auditoria' ? 'page' : null"
+        :class="page === 'auditoria' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'"
+        class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i></span
+        ><span class="ml-2">Auditoría</span></a
+      >
 
       <p class="px-3 text-xs font-medium text-white/50 mt-6 mb-2">Cuentas</p>
-      <a href="?section=administradores" @click.prevent="goTo('administradores')" :aria-current="page === 'administradores' ? 'page' : null" :class="page === 'administradores' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'" class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span><span class="ml-2">Administradores</span></a>
-      <a href="?section=reports" @click.prevent="goTo('reports')" :aria-current="page === 'reports' ? 'page' : null" class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i></span><span class="ml-2">Reportes</span></a>
+      <a
+        href="?section=administradores"
+        @click.prevent="goTo('administradores')"
+        :aria-current="page === 'administradores' ? 'page' : null"
+        :class="page === 'administradores' ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5'"
+        class="on-dark flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span
+        ><span class="ml-2">Administradores</span></a
+      >
+      <a
+        href="?section=reports"
+        @click.prevent="goTo('reports')"
+        :aria-current="page === 'reports' ? 'page' : null"
+        class="on-dark flex items-center px-3 py-3 mt-1 text-white/80 hover:bg-white/5 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i
+            class="fa-solid fa-file-invoice-dollar"
+            aria-hidden="true"
+          ></i></span
+        ><span class="ml-2">Reportes</span></a
+      >
 
       <p class="px-3 text-xs font-medium text-white/50 mt-6 mb-2">Sistema</p>
-      <a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="on-dark flex items-center px-3 py-3 text-white/80 hover:bg-white/5 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-gear" aria-hidden="true"></i></span><span class="ml-2">Configuración</span></a>
-
+      <a
+        href="?section=configuration"
+        @click.prevent="goTo('configuration')"
+        :aria-current="page === 'configuration' ? 'page' : null"
+        class="on-dark flex items-center px-3 py-3 text-white/80 hover:bg-white/5 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-gear" aria-hidden="true"></i></span
+        ><span class="ml-2">Configuración</span></a
+      >
     </nav>
     <div class="p-4 border-t border-white/10">
-      <div class="bg-white/5 p-3"><a href="?section=profile" @click.prevent="goTo('profile')" aria-label="Mi perfil" class="flex items-center gap-3 py-2">
-        <div class="w-9 h-9 bg-white/10 flex items-center justify-center text-white text-xs font-bold" aria-hidden="true" x-text="initials"></div>
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-white truncate" x-text="user.username"></p>
-          <p class="text-xs text-white/60 truncate">Super admin</p>
-        </div>
-        <i class="fa-solid fa-chevron-right text-white/60 text-xs" aria-hidden="true"></i></a><button class="on-dark text-white/60 hover:text-white mt-3" @click="logout()" aria-label="Cerrar sesión"><span class="text-xs">Cerrar sesión</span><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+      <div class="bg-white/5 p-3">
+        <a
+          href="?section=profile"
+          @click.prevent="goTo('profile')"
+          aria-label="Mi perfil"
+          class="flex items-center gap-3 py-2"
+        >
+          <div
+            class="w-9 h-9 bg-white/10 flex items-center justify-center text-white text-xs font-bold"
+            aria-hidden="true"
+            x-text="initials"
+          ></div>
+          <div class="flex-1 min-w-0">
+            <p
+              class="text-xs font-semibold text-white truncate"
+              x-text="user.username"
+            ></p>
+            <p class="text-xs text-white/60 truncate">Super admin</p>
+          </div>
+          <i
+            class="fa-solid fa-chevron-right text-white/60 text-xs"
+            aria-hidden="true"
+          ></i></a
+        ><button
+          class="on-dark text-white/60 hover:text-white mt-3"
+          @click="logout()"
+          aria-label="Cerrar sesión"
+        >
+          <span class="text-xs">Cerrar sesión</span
+          ><i class="fa-solid fa-right-from-bracket text-sm"></i>
+        </button>
       </div>
     </div>
   </aside>
-  <div x-show="drawer" x-cloak @click="drawer = false" class="fixed inset-0 bg-black/30 z-30 md:hidden" x-transition.opacity></div>
+  <div
+    x-show="drawer"
+    x-cloak
+    @click="drawer = false"
+    class="fixed inset-0 bg-black/30 z-30 md:hidden"
+    x-transition.opacity
+  ></div>
 
   <!-- MAIN -->
-  <main id="main-scroll" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin">
-
+  <main
+    id="main-scroll"
+    class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin"
+  >
     <div class="sticky top-0 z-20 bg-material-bg/90 backdrop-blur-sm">
       <header class="py-4 px-5 md:px-8 flex justify-between items-center">
         <div>
           <p class="text-sm text-gray-500">Todos los edificios</p>
-          <h1 class="font-bold text-material-dark text-xl flex items-center gap-3">Super administración
-            <span class="hidden sm:inline-block bg-material-dark text-white text-xs font-medium px-2 py-1">Super admin</span></h1>
+          <h1
+            class="font-bold text-material-dark text-xl flex items-center gap-3"
+          >
+            Super administración
+            <span
+              class="hidden sm:inline-block bg-material-dark text-white text-xs font-medium px-2 py-1"
+              >Super admin</span
+            >
+          </h1>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="goTo('pendientes')" class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" :aria-label="'Notificaciones, ' + alerts.length + ' sin leer'">
+          <button
+            @click="goTo('pendientes')"
+            class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark"
+            :aria-label="'Notificaciones, ' + alerts.length + ' sin leer'"
+          >
             <i class="fa-regular fa-bell text-sm" aria-hidden="true"></i>
-            <span x-show="alerts.length" x-cloak class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span
+              x-show="alerts.length"
+              x-cloak
+              class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"
+            ></span>
           </button>
-          <button @click="drawer = true" class="md:hidden w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" aria-label="Abrir menú"><i class="fa-solid fa-bars text-sm"></i></button>
+          <button
+            @click="drawer = true"
+            class="md:hidden w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark"
+            aria-label="Abrir menú"
+          >
+            <i class="fa-solid fa-bars text-sm"></i>
+          </button>
         </div>
       </header>
     </div>
     <div class="px-5 md:px-8 pt-2 pb-10 max-w-7xl mx-auto w-full">
-
-<div class="flex justify-end mb-4"><button @click="refresh()" :disabled="loading" class="text-sm underline">Actualizar datos</button></div><p x-show="error" x-text="error" role="alert" class="mb-4 p-4 bg-red-50 text-red-800"></p><p x-show="loading" role="status">Cargando…</p>
+      <div class="flex justify-end mb-4">
+        <button
+          @click="refresh()"
+          :disabled="loading"
+          class="text-sm underline"
+        >
+          Actualizar datos
+        </button>
+      </div>
+      <p
+        x-show="error"
+        x-text="error"
+        role="alert"
+        class="mb-4 p-4 bg-red-50 text-red-800"
+      ></p>
+      <p x-show="loading" role="status">Cargando…</p>
       <!-- ALERTAS -->
-      <section x-show="page === 'resumen'" x-cloak aria-label="Alertas" class="space-y-3">
+      <section
+        x-show="page === 'resumen'"
+        x-cloak
+        aria-label="Alertas"
+        class="space-y-3"
+      >
         <template x-for="a in alerts" :key="a.id">
-          <div class="bg-white shadow-soft border-l-4 border-amber-500 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4" role="alert">
-            <div class="w-10 h-10 shrink-0 bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></div>
+          <div
+            class="bg-white shadow-soft border-l-4 border-amber-500 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4"
+            role="alert"
+          >
+            <div
+              class="w-10 h-10 shrink-0 bg-amber-100 text-amber-700 flex items-center justify-center"
+            >
+              <i
+                class="fa-solid fa-triangle-exclamation"
+                aria-hidden="true"
+              ></i>
+            </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-bold text-material-dark" x-text="a.title"></p>
+              <p
+                class="text-sm font-bold text-material-dark"
+                x-text="a.title"
+              ></p>
               <p class="text-sm text-material-text mt-0.5" x-text="a.body"></p>
             </div>
             <div class="flex gap-2 shrink-0">
-              <button @click="focusBuilding(a.building)" class="px-3 py-2 text-xs font-semibold text-white bg-material-dark hover:bg-material-darker">Ver edificio</button>
-              <button @click="dismiss(a.id)" class="px-3 py-2 text-xs font-semibold text-material-dark border border-gray-300 hover:bg-gray-50">Descartar</button>
+              <button
+                @click="focusBuilding(a.building)"
+                class="px-3 py-2 text-xs font-semibold text-white bg-material-dark hover:bg-material-darker"
+              >
+                Ver edificio
+              </button>
+              <button
+                @click="dismiss(a.id)"
+                class="px-3 py-2 text-xs font-semibold text-material-dark border border-gray-300 hover:bg-gray-50"
+              >
+                Descartar
+              </button>
             </div>
           </div>
         </template>
-        <p x-show="alerts.length === 0" x-cloak class="text-sm text-material-text flex items-center gap-2 px-1"><i class="fa-solid fa-circle-check text-emerald-500" aria-hidden="true"></i>Sin incidencias conocidas. Los dispositivos sin verificar requieren una consulta.</p>
+        <p
+          x-show="alerts.length === 0"
+          x-cloak
+          class="text-sm text-material-text flex items-center gap-2 px-1"
+        >
+          <i
+            class="fa-solid fa-circle-check text-emerald-500"
+            aria-hidden="true"
+          ></i
+          >Sin incidencias conocidas. Los dispositivos sin verificar requieren
+          una consulta.
+        </p>
       </section>
 
       <!-- KPIs -->
-      <section x-show="page === 'resumen'" x-cloak data-panel-page="resumen" class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10" aria-label="Resumen de la plataforma">
+      <section
+        x-show="page === 'resumen'"
+        x-cloak
+        data-panel-page="resumen"
+        class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10"
+        aria-label="Resumen de la plataforma"
+      >
         <div class="relative bg-white shadow-soft p-4 pt-9 sm:pt-4">
-          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-city" aria-hidden="true"></i></div>
+          <div
+            class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"
+          >
+            <i class="fa-solid fa-city" aria-hidden="true"></i>
+          </div>
           <p class="text-sm text-gray-500">Edificios activos</p>
-          <p class="text-3xl font-bold text-material-dark mt-1" x-text="buildings.length - suspended"></p>
-          <hr class="my-3 border-material-border">
-          <p class="text-xs"><span class="font-bold text-material-dark" x-text="suspended"></span> suspendidos</p>
+          <p
+            class="text-3xl font-bold text-material-dark mt-1"
+            x-text="buildings.length - suspended"
+          ></p>
+          <hr class="my-3 border-material-border" />
+          <p class="text-xs">
+            <span
+              class="font-bold text-material-dark"
+              x-text="suspended"
+            ></span>
+            suspendidos
+          </p>
         </div>
         <div class="relative bg-white shadow-soft p-4 pt-9 sm:pt-4">
-          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></div>
+          <div
+            class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"
+          >
+            <i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i>
+          </div>
           <p class="text-sm text-gray-500">Dispositivos en línea</p>
-          <p class="text-3xl font-bold text-material-dark mt-1"><span x-text="devOnline"></span><span class="text-lg font-medium text-gray-400"> de <span x-text="devTotal"></span></span></p>
-          <hr class="my-3 border-material-border">
-          <p class="text-xs"><span x-text="devOffline"></span> desconectados · <span x-text="devUnknown"></span> sin verificar</p>
+          <p class="text-3xl font-bold text-material-dark mt-1">
+            <span x-text="devOnline"></span
+            ><span class="text-lg font-medium text-gray-400">
+              de <span x-text="devTotal"></span
+            ></span>
+          </p>
+          <hr class="my-3 border-material-border" />
+          <p class="text-xs">
+            <span x-text="devOffline"></span> desconectados ·
+            <span x-text="devUnknown"></span> sin verificar
+          </p>
         </div>
         <div class="relative bg-white shadow-soft p-4 pt-9 sm:pt-4">
-          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-door-open" aria-hidden="true"></i></div>
+          <div
+            class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"
+          >
+            <i class="fa-solid fa-door-open" aria-hidden="true"></i>
+          </div>
           <p class="text-sm text-gray-500">Órdenes enviadas hoy</p>
-          <p class="text-3xl font-bold text-material-dark mt-1" x-text="n(todayTotal)"></p>
-          <hr class="my-3 border-material-border">
-          <p class="text-xs"><span class="font-bold" :class="delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(delta >= 0 ? '+' : '') + delta + '%'"></span> frente a ayer</p>
+          <p
+            class="text-3xl font-bold text-material-dark mt-1"
+            x-text="n(todayTotal)"
+          ></p>
+          <hr class="my-3 border-material-border" />
+          <p class="text-xs">
+            <span
+              class="font-bold"
+              :class="delta >= 0 ? 'text-green-600' : 'text-red-600'"
+              x-text="(delta >= 0 ? '+' : '') + delta + '%'"
+            ></span>
+            frente a ayer
+          </p>
         </div>
         <div class="relative bg-white shadow-soft p-4 pt-9 sm:pt-4">
-          <div class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"><i class="fa-solid fa-microchip" aria-hidden="true"></i></div>
+          <div
+            class="absolute -top-5 right-4 w-12 h-12 bg-material-dark shadow-floating flex items-center justify-center text-white text-lg"
+          >
+            <i class="fa-solid fa-microchip" aria-hidden="true"></i>
+          </div>
           <p class="text-sm text-gray-500">Pendientes de revisión</p>
-          <p class="text-3xl font-bold text-material-dark mt-1"><span x-text="pendingTotal"></span></p>
-          <hr class="my-3 border-material-border">
-          <p class="text-xs"><a href="?section=pendientes" @click.prevent="goTo('pendientes')" class="font-bold text-amber-600">Revisar órdenes pendientes</a></p>
+          <p class="text-3xl font-bold text-material-dark mt-1">
+            <span x-text="pendingTotal"></span>
+          </p>
+          <hr class="my-3 border-material-border" />
+          <p class="text-xs">
+            <a
+              href="?section=pendientes"
+              @click.prevent="goTo('pendientes')"
+              class="font-bold text-amber-600"
+              >Revisar órdenes pendientes</a
+            >
+          </p>
         </div>
       </section>
 
-<section x-show="page === 'pendientes'" x-cloak data-panel-page="pendientes" id="pendientes" class="bg-white shadow-soft p-6"><h2 class="font-bold text-material-dark">Pendientes de revisión</h2><p class="text-sm mt-2">Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar no acciona el relé.</p><template x-for="b in pendingBuildings" :key="b.id"><div class="mt-3 flex justify-between gap-4 border-t pt-3"><span><strong x-text="b.name"></strong> · <span x-text="b.pending"></span> registros pendientes</span><button @click="enter(b,'review')" class="text-sm underline">Revisar edificio</button></div></template><p x-show="pendingTotal === 0" class="mt-3 text-sm">No hay órdenes pendientes de revisión.</p></section>
+      <section
+        x-show="page === 'pendientes'"
+        x-cloak
+        data-panel-page="pendientes"
+        id="pendientes"
+        class="bg-white shadow-soft p-6"
+      >
+        <h2 class="font-bold text-material-dark">Pendientes de revisión</h2>
+        <p class="text-sm mt-2">
+          Comprueba lo ocurrido en el lugar antes de liberar una orden. Revisar
+          no acciona el relé.
+        </p>
+        <template x-for="b in pendingBuildings" :key="b.id"
+          ><div class="mt-3 flex justify-between gap-4 border-t pt-3">
+            <span
+              ><strong x-text="b.name"></strong> ·
+              <span x-text="b.pending"></span> registros pendientes</span
+            ><button @click="enter(b,'review')" class="text-sm underline">
+              Revisar edificio
+            </button>
+          </div></template
+        >
+        <p x-show="pendingTotal === 0" class="mt-3 text-sm">
+          No hay órdenes pendientes de revisión.
+        </p>
+      </section>
       <!-- EDIFICIOS -->
-      <section x-show="page === 'edificios'" x-cloak data-panel-page="edificios" id="edificios" class="" aria-labelledby="t-edif">
+      <section
+        x-show="page === 'edificios'"
+        x-cloak
+        data-panel-page="edificios"
+        id="edificios"
+        class=""
+        aria-labelledby="t-edif"
+      >
         <div class="relative bg-white shadow-soft">
-          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
-            <h2 id="t-edif" class="text-white font-bold text-base">Edificios</h2>
-            <button @click="openSheet()" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
-              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Nuevo edificio
+          <div
+            class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center"
+          >
+            <h2 id="t-edif" class="text-white font-bold text-base">
+              Edificios
+            </h2>
+            <button
+              @click="openSheet()"
+              class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i>
+              Nuevo edificio
             </button>
           </div>
 
-          <div class="px-5 md:px-6 pt-5 flex flex-col md:flex-row md:items-center gap-3">
+          <div
+            class="px-5 md:px-6 pt-5 flex flex-col md:flex-row md:items-center gap-3"
+          >
             <div class="flex" role="group" aria-label="Filtrar edificios">
-              <template x-for="o in [['todos','Todos', buildings.length],['incidencias','Con incidencias', withIssues],['suspended','Suspendidos', suspended]]" :key="o[0]">
-                <button @click="tab = o[0]" :aria-pressed="tab === o[0]"
-                        class="px-3 py-2 text-xs font-medium border -ml-px first:ml-0"
-                        :class="tab === o[0] ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">
-                  <span x-text="o[1]"></span> <span class="opacity-70" x-text="o[2]"></span>
+              <template
+                x-for="o in [['todos','Todos', buildings.length],['incidencias','Con incidencias', withIssues],['suspended','Suspendidos', suspended]]"
+                :key="o[0]"
+              >
+                <button
+                  @click="tab = o[0]"
+                  :aria-pressed="tab === o[0]"
+                  class="px-3 py-2 text-xs font-medium border -ml-px first:ml-0"
+                  :class="tab === o[0] ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+                >
+                  <span x-text="o[1]"></span>
+                  <span class="opacity-70" x-text="o[2]"></span>
                 </button>
               </template>
             </div>
             <div class="relative md:ml-auto md:w-72">
               <label class="sr-only" for="f-q">Buscar edificio</label>
-              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" aria-hidden="true"></i>
-              <input id="f-q" x-model="q" type="search" placeholder="Buscar edificio o administrador"
-                     class="w-full border border-gray-300 pl-8 pr-3 py-2 text-xs text-material-dark placeholder-gray-400">
+              <i
+                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"
+                aria-hidden="true"
+              ></i>
+              <input
+                id="f-q"
+                x-model="q"
+                type="search"
+                placeholder="Buscar edificio o administrador"
+                class="w-full border border-gray-300 pl-8 pr-3 py-2 text-xs text-material-dark placeholder-gray-400"
+              />
             </div>
           </div>
 
           <div class="block w-full overflow-x-auto mt-3">
             <table class="w-full text-left building-table">
               <thead>
-                <tr class="border-b border-material-border text-xs text-gray-500">
+                <tr
+                  class="border-b border-material-border text-xs text-gray-500"
+                >
                   <th class="px-6 py-3 font-medium">Edificio</th>
-                  <th class="px-6 py-3 font-medium hidden lg:table-cell">Cuenta</th>
-                  <th class="px-6 py-3 font-medium text-center">Dispositivos</th>
-                  <th class="px-6 py-3 font-medium hidden md:table-cell">Órdenes enviadas hoy</th>
+                  <th class="px-6 py-3 font-medium hidden lg:table-cell">
+                    Cuenta
+                  </th>
+                  <th class="px-6 py-3 font-medium text-center">
+                    Dispositivos
+                  </th>
+                  <th class="px-6 py-3 font-medium hidden md:table-cell">
+                    Órdenes enviadas hoy
+                  </th>
                   <th class="px-6 py-3 font-medium">Estado</th>
-                  <th class="px-6 py-3 font-medium text-right"><span class="sr-only">Acciones</span></th>
+                  <th class="px-6 py-3 font-medium text-right">
+                    <span class="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <template x-for="b in filtered" :key="b.id">
-                  <tr class="border-b border-material-border hover:bg-gray-50/60">
+                  <tr
+                    class="border-b border-material-border hover:bg-gray-50/60"
+                  >
                     <td class="px-6 py-3">
-                      <p class="text-sm font-semibold text-material-dark whitespace-nowrap" x-text="b.name"></p>
-                      <p class="text-xs text-gray-400 whitespace-nowrap"><span x-text="b.slug"></span> · <span x-text="b.admin"></span><span x-show="b.pending"></span></p>
+                      <p
+                        class="text-sm font-semibold text-material-dark whitespace-nowrap"
+                        x-text="b.name"
+                      ></p>
+                      <p class="text-xs text-gray-400 whitespace-nowrap">
+                        <span x-text="b.slug"></span> ·
+                        <span x-text="b.admin"></span
+                        ><span x-show="b.pending"></span>
+                      </p>
                     </td>
-                    <td class="px-6 py-3 hidden lg:table-cell"><span class="inline-block px-2 py-1 text-xs font-bold" :class="accountClass(b)" x-text="b.statusLabel"></span></td>
-                    <td class="px-6 py-3 text-center font-mono text-sm text-material-dark whitespace-nowrap">
-                      <template x-if="b.total > 0"><span><span :class="b.online < b.total ? 'text-amber-700 font-medium' : ''" x-text="b.online"></span> / <span x-text="b.total"></span></span></template>
-                      <span x-show="b.total === 0" class="text-gray-400">—</span>
+                    <td class="px-6 py-3 hidden lg:table-cell">
+                      <span
+                        class="inline-block px-2 py-1 text-xs font-bold"
+                        :class="accountClass(b)"
+                        x-text="b.statusLabel"
+                      ></span>
+                    </td>
+                    <td
+                      class="px-6 py-3 text-center font-mono text-sm text-material-dark whitespace-nowrap"
+                    >
+                      <template x-if="b.total > 0"
+                        ><span
+                          ><span
+                            :class="b.online < b.total ? 'text-amber-700 font-medium' : ''"
+                            x-text="b.online"
+                          ></span>
+                          / <span x-text="b.total"></span></span
+                      ></template>
+                      <span x-show="b.total === 0" class="text-gray-400"
+                        >—</span
+                      >
                     </td>
                     <td class="px-6 py-3 hidden md:table-cell">
                       <div class="flex items-center gap-3 min-w-[150px]">
-                        <span class="font-mono text-sm text-material-dark w-10 text-right" x-text="b.today"></span>
-                        <div class="h-1.5 bg-gray-100 flex-1"><div class="h-1.5 bg-material-dark" :style="buildingWidth(b)"></div></div>
+                        <span
+                          class="font-mono text-sm text-material-dark w-10 text-right"
+                          x-text="b.today"
+                        ></span>
+                        <div class="h-1.5 bg-gray-100 flex-1">
+                          <div
+                            class="h-1.5 bg-material-dark"
+                            :style="buildingWidth(b)"
+                          ></div>
+                        </div>
                       </div>
                     </td>
                     <td class="px-6 py-3">
-                      <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold whitespace-nowrap" :class="health(b).c">
-                        <i :class="health(b).i" class="text-[10px]" aria-hidden="true"></i><span x-text="health(b).t"></span>
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold whitespace-nowrap"
+                        :class="health(b).c"
+                      >
+                        <i
+                          :class="health(b).i"
+                          class="text-[10px]"
+                          aria-hidden="true"
+                        ></i
+                        ><span x-text="health(b).t"></span>
                       </span>
                     </td>
                     <td class="px-6 py-3 text-right">
-                      <button @click="enter(b)"
-                              class="px-3 py-1.5 text-xs font-semibold border whitespace-nowrap"
-                              :class="armed === 'e' + b.id ? 'bg-material-dark border-material-dark text-white' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
-                              x-text="manageLabel"></button>
+                      <button
+                        @click="enter(b)"
+                        class="px-3 py-1.5 text-xs font-semibold border whitespace-nowrap"
+                        :class="armed === 'e' + b.id ? 'bg-material-dark border-material-dark text-white' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+                        x-text="manageLabel"
+                      ></button>
                     </td>
                   </tr>
                 </template>
               </tbody>
             </table>
-            <div x-show="filtered.length === 0" x-cloak class="px-6 py-10 text-center">
-              <p class="text-sm font-medium text-material-dark">No hay edificios con estos filtros</p>
-              <button @click="clearFilters()" class="mt-3 text-xs font-semibold text-white bg-material-dark px-3 py-2">Quitar filtros</button>
+            <div
+              x-show="filtered.length === 0"
+              x-cloak
+              class="px-6 py-10 text-center"
+            >
+              <p class="text-sm font-medium text-material-dark">
+                No hay edificios con estos filtros
+              </p>
+              <button
+                @click="clearFilters()"
+                class="mt-3 text-xs font-semibold text-white bg-material-dark px-3 py-2"
+              >
+                Quitar filtros
+              </button>
             </div>
           </div>
-          <p class="px-6 py-4 text-xs text-gray-500"><i class="fa-solid fa-circle-info mr-1.5" aria-hidden="true"></i>Administras con tu identidad de superadministrador. Los cambios conservan sus registros de auditoría.</p>
+          <p class="px-6 py-4 text-xs text-gray-500">
+            <i class="fa-solid fa-circle-info mr-1.5" aria-hidden="true"></i
+            >Administras con tu identidad de superadministrador. Los cambios
+            conservan sus registros de auditoría.
+          </p>
         </div>
       </section>
 
-<section x-show="page === 'administradores'" x-cloak data-panel-page="administradores" id="administradores" class="bg-white p-6 shadow-soft"><h2 class="font-bold text-material-dark">Administradores de edificios</h2><template x-for="b in buildings" :key="b.id"><div class="mt-3 border-t pt-3 flex justify-between gap-4"><div><strong x-text="b.name"></strong><p class="text-sm" x-text="b.admin"></p></div><button @click="enter(b,'users')" class="text-sm underline">Gestionar cuentas</button></div></template></section><div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm"><a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="underline">Inventario, registro y asignación de relés</a><a href="?section=configuration" @click.prevent="goTo('configuration')" :aria-current="page === 'configuration' ? 'page' : null" class="underline">Configurar MQTT</a></div>
+      <section
+        x-show="page === 'administradores'"
+        x-cloak
+        data-panel-page="administradores"
+        id="administradores"
+        class="bg-white p-6 shadow-soft"
+      >
+        <h2 class="font-bold text-material-dark">
+          Administradores de edificios
+        </h2>
+        <template x-for="b in buildings" :key="b.id"
+          ><div class="mt-3 border-t pt-3 flex justify-between gap-4">
+            <div>
+              <strong x-text="b.name"></strong>
+              <p class="text-sm" x-text="b.admin"></p>
+            </div>
+            <button @click="enter(b,'users')" class="text-sm underline">
+              Gestionar cuentas
+            </button>
+          </div></template
+        >
+      </section>
+      <div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm">
+        <a
+          href="?section=configuration"
+          @click.prevent="goTo('configuration')"
+          :aria-current="page === 'configuration' ? 'page' : null"
+          class="underline"
+          >Inventario, registro y asignación de relés</a
+        ><a
+          href="?section=configuration"
+          @click.prevent="goTo('configuration')"
+          :aria-current="page === 'configuration' ? 'page' : null"
+          class="underline"
+          >Configurar MQTT</a
+        >
+      </div>
       <!-- FLOTA -->
-      <section x-show="page === 'flota'" x-cloak data-panel-page="flota" id="flota" class="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Flota de dispositivos">
-
+      <section
+        x-show="page === 'flota'"
+        x-cloak
+        data-panel-page="flota"
+        id="flota"
+        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        aria-label="Flota de dispositivos"
+      >
         <div class="bg-white shadow-soft p-5 md:p-6">
-          <h2 class="text-material-dark font-bold text-base">Versión de firmware</h2>
-          <p class="text-xs text-gray-500 mt-1">Versiones informadas por los dispositivos consultados</p>
+          <h2 class="text-material-dark font-bold text-base">
+            Versión de firmware
+          </h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Versiones informadas por los dispositivos consultados
+          </p>
 
-          <div class="mt-5 flex h-6 gap-[2px]" role="img" :aria-label="firmwareLabel">
+          <div
+            class="mt-5 flex h-6 gap-[2px]"
+            role="img"
+            :aria-label="firmwareLabel"
+          >
             <template x-for="f in firmware" :key="f.v">
-              <div x-show="f.n > 0" :class="f.cls" :style="firmwareWidth(f)" :title="f.v + ': ' + f.n"></div>
+              <div
+                x-show="f.n > 0"
+                :class="f.cls"
+                :style="firmwareWidth(f)"
+                :title="f.v + ': ' + f.n"
+              ></div>
             </template>
           </div>
           <ul class="mt-4 space-y-2">
@@ -218,55 +659,143 @@
               <li class="flex items-center gap-3 text-sm">
                 <span class="w-2.5 h-2.5" :class="f.cls"></span>
                 <span class="font-mono text-material-dark" x-text="f.v"></span>
-                <span class="ml-auto text-gray-500"><span class="font-medium text-material-dark" x-text="f.n"></span> dispositivos</span>
+                <span class="ml-auto text-gray-500"
+                  ><span
+                    class="font-medium text-material-dark"
+                    x-text="f.n"
+                  ></span>
+                  dispositivos</span
+                >
               </li>
             </template>
           </ul>
 
-          <p class="mt-6 text-xs">Inventario: hasta 500 relés. Versiones reportadas en las consultas de esta sesión. Sin consultar significa que aún no hay datos. Las actualizaciones se realizan desde ESPHome.</p>
+          <p class="mt-6 text-xs">
+            Inventario: hasta 500 relés. Versiones reportadas en las consultas
+            de esta sesión. Sin consultar significa que aún no hay datos. Las
+            actualizaciones se realizan desde ESPHome.
+          </p>
         </div>
         <div class="bg-white shadow-soft p-5 md:p-6">
-          <h2 class="text-material-dark font-bold text-base">Comprobar dispositivos</h2>
-          <p class="text-xs text-gray-500 mt-1"><span x-text="offline.length"></span> dispositivos para comprobar</p>
+          <h2 class="text-material-dark font-bold text-base">
+            Comprobar dispositivos
+          </h2>
+          <p class="text-xs text-gray-500 mt-1">
+            <span x-text="offline.length"></span> dispositivos para comprobar
+          </p>
           <ul class="mt-4 divide-y divide-material-border">
             <template x-for="d in offline" :key="d.id">
               <li class="py-3 flex items-center gap-3">
-                <div class="h-9 w-9 shrink-0 bg-red-50 text-red-600 flex items-center justify-center"><i class="fa-solid fa-plug-circle-xmark text-sm" aria-hidden="true"></i></div>
-                <div class="min-w-0 flex-1">
-                  <p class="font-mono text-sm font-medium text-material-dark truncate" x-text="d.id"></p>
-                  <p class="text-xs text-gray-500 truncate" x-text="d.building + ' · visto ' + d.last + ' · última señal ' + d.rssi"></p>
+                <div
+                  class="h-9 w-9 shrink-0 bg-red-50 text-red-600 flex items-center justify-center"
+                >
+                  <i
+                    class="fa-solid fa-plug-circle-xmark text-sm"
+                    aria-hidden="true"
+                  ></i>
                 </div>
-                <button @click="retry(d)" :disabled="d.pinging" class="shrink-0 px-2.5 py-1.5 text-xs font-semibold border border-gray-300 text-material-dark hover:bg-gray-50 disabled:opacity-60 flex items-center gap-1.5">
-                  <i :class="d.pinging ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate'" class="text-[10px]" aria-hidden="true"></i><span x-text="d.pinging ? 'Probando…' : 'Comprobar'"></span>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="font-mono text-sm font-medium text-material-dark truncate"
+                    x-text="d.id"
+                  ></p>
+                  <p
+                    class="text-xs text-gray-500 truncate"
+                    x-text="d.building + ' · visto ' + d.last + ' · última señal ' + d.rssi"
+                  ></p>
+                </div>
+                <button
+                  @click="retry(d)"
+                  :disabled="d.pinging"
+                  class="shrink-0 px-2.5 py-1.5 text-xs font-semibold border border-gray-300 text-material-dark hover:bg-gray-50 disabled:opacity-60 flex items-center gap-1.5"
+                >
+                  <i
+                    :class="d.pinging ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate'"
+                    class="text-[10px]"
+                    aria-hidden="true"
+                  ></i
+                  ><span x-text="d.pinging ? 'Probando…' : 'Comprobar'"></span>
                 </button>
               </li>
             </template>
-            <li x-show="offline.length === 0" x-cloak class="py-8 text-center text-sm text-material-text">No hay dispositivos pendientes de comprobar.</li>
+            <li
+              x-show="offline.length === 0"
+              x-cloak
+              class="py-8 text-center text-sm text-material-text"
+            >
+              No hay dispositivos pendientes de comprobar.
+            </li>
           </ul>
         </div>
       </section>
 
       <!-- AUDITORÍA -->
-<section x-show="page === 'configuration' || page === 'reports' || page === 'building' || page === 'new'" x-cloak><div id="management-root"></div></section>
-      <section x-show="page === 'auditoria'" x-cloak data-panel-page="auditoria" id="auditoria" class="" aria-labelledby="t-aud">
+      <section
+        x-show="page === 'configuration' || page === 'reports' || page === 'building' || page === 'new'"
+        x-cloak
+      >
+        <div id="management-root"></div>
+      </section>
+      <section
+        x-show="page === 'auditoria'"
+        x-cloak
+        data-panel-page="auditoria"
+        id="auditoria"
+        class=""
+        aria-labelledby="t-aud"
+      >
         <div class="relative bg-white shadow-soft">
-          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
+          <div
+            class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center"
+          >
             <h2 id="t-aud" class="text-white font-bold text-base">Auditoría</h2>
           </div>
-          <div class="px-5 md:px-6 pt-5 flex" role="group" aria-label="Filtrar auditoría">
-            <button @click="auditFilter = 'todo'" :aria-pressed="auditFilter === 'todo'" class="px-3 py-2 text-xs font-medium border"
-                    :class="auditFilter === 'todo' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">Todo</button>
-            <button @click="auditFilter = 'mine'" :aria-pressed="auditFilter === 'mine'" class="px-3 py-2 text-xs font-medium border -ml-px"
-                    :class="auditFilter === 'mine' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">Mis acciones</button>
+          <div
+            class="px-5 md:px-6 pt-5 flex"
+            role="group"
+            aria-label="Filtrar auditoría"
+          >
+            <button
+              @click="auditFilter = 'todo'"
+              :aria-pressed="auditFilter === 'todo'"
+              class="px-3 py-2 text-xs font-medium border"
+              :class="auditFilter === 'todo' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+            >
+              Todo
+            </button>
+            <button
+              @click="auditFilter = 'mine'"
+              :aria-pressed="auditFilter === 'mine'"
+              class="px-3 py-2 text-xs font-medium border -ml-px"
+              :class="auditFilter === 'mine' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+            >
+              Mis acciones
+            </button>
           </div>
           <ul class="mt-3 pb-2">
             <template x-for="(a, i) in auditShown" :key="i + a.action + a.ago">
-              <li class="flex items-center gap-4 px-5 md:px-6 py-3 border-b border-material-border last:border-0">
-                <div class="h-9 w-9 shrink-0 flex items-center justify-center" :class="a.icon === 'fa-user-secret' ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-material-dark'">
-                  <i :class="'fa-solid ' + a.icon" class="text-sm" aria-hidden="true"></i></div>
+              <li
+                class="flex items-center gap-4 px-5 md:px-6 py-3 border-b border-material-border last:border-0"
+              >
+                <div
+                  class="h-9 w-9 shrink-0 flex items-center justify-center"
+                  :class="a.icon === 'fa-user-secret' ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-material-dark'"
+                >
+                  <i
+                    :class="'fa-solid ' + a.icon"
+                    class="text-sm"
+                    aria-hidden="true"
+                  ></i>
+                </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-material-dark" x-text="a.action"></p>
-                  <p class="text-xs text-gray-400 truncate" x-text="a.actor"></p>
+                  <p
+                    class="text-sm font-medium text-material-dark"
+                    x-text="a.action"
+                  ></p>
+                  <p
+                    class="text-xs text-gray-400 truncate"
+                    x-text="a.actor"
+                  ></p>
                 </div>
                 <p class="text-xs text-gray-500 shrink-0" x-text="a.ago"></p>
               </li>
@@ -276,13 +805,21 @@
       </section>
 
       <!-- PROFILE -->
-<p class="mt-8 text-center text-xs text-material-text">PortonSmart · Plataforma · consultas bajo demanda</p>
+      <p class="mt-8 text-center text-xs text-material-text">
+        PortonSmart · Plataforma · consultas bajo demanda
+      </p>
     </div>
+  </main>
 
-</main>
-
-  <div x-show="toastOn" x-cloak x-transition.opacity role="status" aria-live="polite"
-       class="fixed z-50 bottom-6 left-1/2 -translate-x-1/2 max-w-[92vw] bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">
-    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i><span x-text="toastMsg"></span>
+  <div
+    x-show="toastOn"
+    x-cloak
+    x-transition.opacity
+    role="status"
+    aria-live="polite"
+    class="fixed z-50 bottom-6 left-1/2 -translate-x-1/2 max-w-[92vw] bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2"
+  >
+    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i
+    ><span x-text="toastMsg"></span>
   </div>
 </body>

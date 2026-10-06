@@ -1,133 +1,350 @@
-<body @open-profile.window="goTo('profile')" class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
-      x-data="resident" @keydown.escape.window="closePanels()">
-
+<body
+  @open-profile.window="goTo('profile')"
+  class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+  x-data="resident"
+  @keydown.escape.window="closePanels()"
+>
   <!-- SIDEBAR / DRAWER -->
-  <aside :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-         class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
-         style="height:100dvh" aria-label="Menú principal">
+  <aside
+    :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+    class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+    style="height: 100dvh"
+    aria-label="Menú principal"
+  >
     <div class="h-20 flex items-center px-6">
-      <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white shadow-floating">
+      <div
+        class="w-9 h-9 bg-material-dark flex items-center justify-center text-white shadow-floating"
+      >
         <i class="fa-solid fa-building-shield text-sm" aria-hidden="true"></i>
       </div>
-      <span class="ml-3 text-material-dark text-sm font-bold tracking-wider">PORTONSMART</span>
+      <span class="ml-3 text-material-dark text-sm font-bold tracking-wider"
+        >PORTONSMART</span
+      >
     </div>
-    <hr class="border-material-border mx-4 mb-4">
-    <nav class="flex-1 min-h-0 px-4 overflow-y-auto scrollbar-thin"><div x-data="buildingPicker" x-show="linked && options.length > 1" class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"><label x-show="linked && options.length > 1" class="block text-xs">Edificio que controlas<select x-ref="buildingSelect" x-model="selected" @change="change()" class="w-full mt-2 border p-2 text-sm"><template x-for="o in options" :key="o.url"><option :value="o.url" x-text="o.label"></option></template></select></label></div>
-      <a x-show="user.role === 'master'" :href="dashboardUrl" class="block px-3 py-3 mb-2 text-sm text-material-dark">← Panel de administración</a><p class="px-3 text-xs font-medium text-material-text mb-2">Mi cuenta</p>
-      <a href="#accesos" @click.prevent="selectTab('accesos')" :aria-current="page === 'accesos' ? 'page' : null" :class="page === 'accesos' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'" class="flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span><span class="ml-2">Mis accesos</span>
+    <hr class="border-material-border mx-4 mb-4" />
+    <nav class="flex-1 min-h-0 px-4 overflow-y-auto scrollbar-thin">
+      <div
+        x-data="buildingPicker"
+        x-show="linked && options.length > 1"
+        class="px-3 py-3 mb-3 bg-white text-material-dark border border-gray-200"
+      >
+        <label x-show="linked && options.length > 1" class="block text-xs"
+          >Edificio que controlas<select
+            x-ref="buildingSelect"
+            x-model="selected"
+            @change="change()"
+            class="w-full mt-2 border p-2 text-sm"
+          >
+            <template x-for="o in options" :key="o.url"
+              ><option :value="o.url" x-text="o.label"></option
+            ></template></select
+        ></label>
+      </div>
+      <a
+        x-show="user.role === 'master'"
+        :href="dashboardUrl"
+        class="block px-3 py-3 mb-2 text-sm text-material-dark"
+        >← Panel de administración</a
+      >
+      <p class="px-3 text-xs font-medium text-material-text mb-2">Mi cuenta</p>
+      <a
+        href="#accesos"
+        @click.prevent="selectTab('accesos')"
+        :aria-current="page === 'accesos' ? 'page' : null"
+        :class="page === 'accesos' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'"
+        class="flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-door-open" aria-hidden="true"></i></span
+        ><span class="ml-2">Mis accesos</span>
       </a>
-      <a href="#pases" @click.prevent="selectTab('pases')" :aria-current="page === 'pases' ? 'page' : null" :class="page === 'pases' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'" class="flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span><span class="ml-2">Códigos activos</span>
+      <a
+        href="#pases"
+        @click.prevent="selectTab('pases')"
+        :aria-current="page === 'pases' ? 'page' : null"
+        :class="page === 'pases' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'"
+        class="flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span
+        ><span class="ml-2">Códigos activos</span>
       </a>
-      <a href="#actividad" @click.prevent="selectTab('actividad')" :aria-current="page === 'actividad' ? 'page' : null" :class="page === 'actividad' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'" class="flex items-center px-3 py-3 mt-1 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></span><span class="ml-2">Historial</span>
+      <a
+        href="#actividad"
+        @click.prevent="selectTab('actividad')"
+        :aria-current="page === 'actividad' ? 'page' : null"
+        :class="page === 'actividad' ? 'bg-material-dark text-white shadow-floating' : 'text-material-dark hover:bg-gray-50'"
+        class="flex items-center px-3 py-3 mt-1 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i
+            class="fa-solid fa-clock-rotate-left"
+            aria-hidden="true"
+          ></i></span
+        ><span class="ml-2">Historial</span>
       </a>
 
       <p class="px-3 text-xs font-medium text-material-text mt-6 mb-2">Ayuda</p>
-      <a href="#" @click.prevent="support()" class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm">
-        <span class="w-6 flex justify-center"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span><span class="ml-2">Soporte</span>
+      <a
+        href="#"
+        @click.prevent="support()"
+        class="flex items-center px-3 py-3 text-material-dark hover:bg-gray-50 font-medium text-sm"
+      >
+        <span class="w-6 flex justify-center"
+          ><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span
+        ><span class="ml-2">Soporte</span>
       </a>
-      <button @click="logout()" class="flex items-center gap-3 w-full px-3 py-4 mt-4 text-sm font-semibold text-material-dark"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar sesión</button>
+      <button
+        @click="logout()"
+        class="flex items-center gap-3 w-full px-3 py-4 mt-4 text-sm font-semibold text-material-dark"
+      >
+        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar
+        sesión
+      </button>
     </nav>
     <div class="p-4 border-t border-material-border">
-      <a href="?section=profile" @click.prevent="goTo('profile')" aria-label="Mi perfil" class="bg-gray-50 p-3 flex items-center gap-3 hover:bg-gray-100">
-        <div class="w-9 h-9 bg-material-dark flex items-center justify-center text-white text-xs font-bold" aria-hidden="true" x-text="initials"></div>
+      <a
+        href="?section=profile"
+        @click.prevent="goTo('profile')"
+        aria-label="Mi perfil"
+        class="bg-gray-50 p-3 flex items-center gap-3 hover:bg-gray-100"
+      >
+        <div
+          class="w-9 h-9 bg-material-dark flex items-center justify-center text-white text-xs font-bold"
+          aria-hidden="true"
+          x-text="initials"
+        ></div>
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-material-dark truncate"><span x-text="user.username"></span></p>
-          <p class="text-xs text-material-text truncate"><span x-text="user.role === 'master' ? 'Administración' : 'Residente'"></span></p>
+          <p class="text-xs font-semibold text-material-dark truncate">
+            <span x-text="user.username"></span>
+          </p>
+          <p class="text-xs text-material-text truncate">
+            <span
+              x-text="user.role === 'master' ? 'Administración' : 'Residente'"
+            ></span>
+          </p>
         </div>
-      <i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i></a>
+        <i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i
+      ></a>
     </div>
   </aside>
-  <div x-show="drawer" x-cloak @click="drawer = false" class="fixed inset-0 bg-black/30 z-30 md:hidden" x-transition.opacity></div>
+  <div
+    x-show="drawer"
+    x-cloak
+    @click="drawer = false"
+    class="fixed inset-0 bg-black/30 z-30 md:hidden"
+    x-transition.opacity
+  ></div>
 
-  <div x-show="error" x-cloak role="alert" class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-red-50 border border-red-200 text-red-800 p-4 shadow-floating max-w-[90vw]"><span x-text="error"></span><button @click="error = ''" class="ml-4 underline">Cerrar</button></div>
-<!-- MAIN -->
-  <main id="main-scroll" class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin pb-24 md:pb-8">
-
-    <header class="py-4 px-5 md:px-8 flex justify-between items-center sticky top-0 z-20 bg-material-bg/85 backdrop-blur-sm">
+  <div
+    x-show="error"
+    x-cloak
+    role="alert"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-red-50 border border-red-200 text-red-800 p-4 shadow-floating max-w-[90vw]"
+  >
+    <span x-text="error"></span
+    ><button @click="error = ''" class="ml-4 underline">Cerrar</button>
+  </div>
+  <!-- MAIN -->
+  <main
+    id="main-scroll"
+    class="flex-1 flex flex-col h-full overflow-y-auto relative scrollbar-thin pb-24 md:pb-8"
+  >
+    <header
+      class="py-4 px-5 md:px-8 flex justify-between items-center sticky top-0 z-20 bg-material-bg/85 backdrop-blur-sm"
+    >
       <div>
-        <p class="text-sm text-gray-500"><span x-text="tenant.name"></span> · <span x-text="user.role === 'master' ? 'Administración' : 'Residente'"></span></p>
-        <h1 class="font-bold text-material-dark text-xl"><span x-text="'Hola, ' + user.username"></span></h1>
+        <p class="text-sm text-gray-500">
+          <span x-text="tenant.name"></span> ·
+          <span
+            x-text="user.role === 'master' ? 'Administración' : 'Residente'"
+          ></span>
+        </p>
+        <h1 class="font-bold text-material-dark text-xl">
+          <span x-text="'Hola, ' + user.username"></span>
+        </h1>
       </div>
-      <button @dblclick="refresh()" class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark" @click="notifications()" aria-label="Notificaciones">
+      <button
+        @dblclick="refresh()"
+        class="relative w-10 h-10 bg-white shadow-soft flex items-center justify-center text-material-dark"
+        @click="notifications()"
+        aria-label="Notificaciones"
+      >
         <i class="fa-regular fa-bell text-sm" aria-hidden="true"></i>
-        <span x-show="noticeCount > 0" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+        <span
+          x-show="noticeCount > 0"
+          class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"
+        ></span>
       </button>
     </header>
 
     <div class="px-4 md:px-8 pt-3 max-w-7xl mx-auto w-full">
-
-      <div class="flex justify-end mb-3"><button @click="refresh()" :disabled="busy" class="text-xs text-material-dark underline">Actualizar datos</button></div>
-<!-- ABRIR -->
-      <section x-show="page === 'accesos'" x-cloak data-panel-page="accesos" id="accesos" aria-labelledby="t-abrir">
+      <div class="flex justify-end mb-3">
+        <button
+          @click="refresh()"
+          :disabled="busy"
+          class="text-xs text-material-dark underline"
+        >
+          Actualizar datos
+        </button>
+      </div>
+      <!-- ABRIR -->
+      <section
+        x-show="page === 'accesos'"
+        x-cloak
+        data-panel-page="accesos"
+        id="accesos"
+        aria-labelledby="t-abrir"
+      >
         <h2 id="t-abrir" class="sr-only">Abrir accesos</h2>
-        <p x-show="!loading && doors.length === 0" class="bg-white p-5 mb-6 text-sm">No tienes accesos asignados. Contacta al administrador.</p><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+        <p
+          x-show="!loading && doors.length === 0"
+          class="bg-white p-5 mb-6 text-sm"
+        >
+          No tienes accesos asignados. Contacta al administrador.
+        </p>
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4"
+        >
           <template x-for="d in doors" :key="d.id">
             <article class="relative bg-white shadow-soft">
-              <div class="absolute top-3 right-3 w-9 h-9 bg-material-dark flex items-center justify-center text-white">
-                <svg viewBox="0 0 24 24" class="w-5 h-5" :class="d.state === 'abierto' ? 'gate-open' : ''" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 21V3h20v18"/><path class="gate-left" d="M4 6h8v14H4zM8 6v14"/><path class="gate-right" d="M12 6h8v14h-8zM16 6v14"/></svg>
+              <div
+                class="absolute top-3 right-3 w-9 h-9 bg-material-dark flex items-center justify-center text-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  :class="d.state === 'abierto' ? 'gate-open' : ''"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path d="M2 21V3h20v18" />
+                  <path class="gate-left" d="M4 6h8v14H4zM8 6v14" />
+                  <path class="gate-right" d="M12 6h8v14h-8zM16 6v14" />
+                </svg>
               </div>
               <div class="p-3 pr-14 pb-2">
-                <h3 class="text-base font-bold text-material-dark leading-snug" x-text="d.name"></h3>
+                <h3
+                  class="text-base font-bold text-material-dark leading-snug"
+                  x-text="d.name"
+                ></h3>
                 <p class="mt-1 text-xs flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full" :class="d.online ? 'bg-emerald-500' : 'bg-red-500'"></span>
+                  <span
+                    class="w-1.5 h-1.5 rounded-full"
+                    :class="d.online ? 'bg-emerald-500' : 'bg-red-500'"
+                  ></span>
                   <span x-text="statusLine(d)"></span>
                 </p>
               </div>
               <div class="px-3 pb-2">
-                <button type="button"
-                        class="hold relative w-full h-[52px] overflow-hidden border font-bold text-sm transition-colors"
-                        :class="btnClass(d)"
-                        :disabled="!d.online || d.state === 'abriendo' || d.state === 'abierto'"
-                        :aria-label="'Abrir ' + d.name + '. ' + label(d)"
-                        @pointerdown.prevent="startHold(d.id)"
-                        @pointerup="cancelHold(d.id)" @pointerleave="cancelHold(d.id)" @pointercancel="cancelHold(d.id)" @blur="cancelHold(d.id)"
-                        @contextmenu.prevent
-                        @keydown.enter.prevent="startHold(d.id)" @keydown.space.prevent="startHold(d.id)"
-                        @keyup.enter="cancelHold(d.id)" @keyup.space="cancelHold(d.id)">
+                <button
+                  type="button"
+                  class="hold relative w-full h-[52px] overflow-hidden border font-bold text-sm transition-colors"
+                  :class="btnClass(d)"
+                  :disabled="!d.online || d.state === 'abriendo' || d.state === 'abierto'"
+                  :aria-label="'Abrir ' + d.name + '. ' + label(d)"
+                  @pointerdown.prevent="startHold(d.id)"
+                  @pointerup="cancelHold(d.id)"
+                  @pointerleave="cancelHold(d.id)"
+                  @pointercancel="cancelHold(d.id)"
+                  @blur="cancelHold(d.id)"
+                  @contextmenu.prevent
+                  @keydown.enter.prevent="startHold(d.id)"
+                  @keydown.space.prevent="startHold(d.id)"
+                  @keyup.enter="cancelHold(d.id)"
+                  @keyup.space="cancelHold(d.id)"
+                >
                   <!-- Relleno: avanza como un portón que se desliza -->
-                  <span class="absolute inset-y-0 left-0" :class="fillClass(d)"
-                        :style="'width:' + (d.progress) + '%; transition: ' + (d.state === 'sosteniendo' ? 'none' : 'width .25s ease')"></span>
+                  <span
+                    class="absolute inset-y-0 left-0"
+                    :class="fillClass(d)"
+                    :style="'width:' + (d.progress) + '%; transition: ' + (d.state === 'sosteniendo' ? 'none' : 'width .25s ease')"
+                  ></span>
                   <!-- Texto oscuro (parte aún sin llenar) -->
-                  <span class="absolute inset-0 flex items-center justify-center gap-2 px-4" :class="textClass(d)"
-                        :style="'clip-path: inset(0 0 0 ' + (d.progress) + '%)'">
-                    <i :class="icon(d)" aria-hidden="true"></i><span x-text="label(d)"></span>
+                  <span
+                    class="absolute inset-0 flex items-center justify-center gap-2 px-4"
+                    :class="textClass(d)"
+                    :style="'clip-path: inset(0 0 0 ' + (d.progress) + '%)'"
+                  >
+                    <i :class="icon(d)" aria-hidden="true"></i
+                    ><span x-text="label(d)"></span>
                   </span>
                   <!-- Texto claro (parte ya llena) -->
-                  <span class="absolute inset-0 flex items-center justify-center gap-2 px-4 text-white pointer-events-none" aria-hidden="true"
-                        :style="'clip-path: inset(0 ' + (100 - d.progress) + '% 0 0)'">
+                  <span
+                    class="absolute inset-0 flex items-center justify-center gap-2 px-4 text-white pointer-events-none"
+                    aria-hidden="true"
+                    :style="'clip-path: inset(0 ' + (100 - d.progress) + '% 0 0)'"
+                  >
                     <i :class="icon(d)"></i><span x-text="label(d)"></span>
                   </span>
                 </button>
-                <button @click="confirmDoor(d)" :disabled="d.state === 'abriendo'" class="mt-1 w-full min-h-[40px] py-2 text-xs underline text-material-text">Abrir con confirmación</button>
-                <p x-show="d.hint" x-cloak class="mt-2 text-xs text-amber-700">Sigue presionando hasta que la barra se llene.</p>
+                <button
+                  @click="confirmDoor(d)"
+                  :disabled="d.state === 'abriendo'"
+                  class="mt-1 w-full min-h-[40px] py-2 text-xs underline text-material-text"
+                >
+                  Abrir con confirmación
+                </button>
+                <p x-show="d.hint" x-cloak class="mt-2 text-xs text-amber-700">
+                  Sigue presionando hasta que la barra se llene.
+                </p>
               </div>
             </article>
           </template>
         </div>
-        <p class="mt-4 text-xs text-material-text">Mantén presionado el botón para abrir. Así evitas aperturas accidentales desde el bolsillo.</p>
+        <p class="mt-4 text-xs text-material-text">
+          Mantén presionado el botón para abrir. Así evitas aperturas
+          accidentales desde el bolsillo.
+        </p>
         <p class="sr-only" aria-live="polite" x-text="live"></p>
       </section>
 
       <!-- PASES -->
-      <section x-show="page === 'pases'" x-cloak data-panel-page="pases" id="pases" class="" aria-labelledby="t-pases">
+      <section
+        x-show="page === 'pases'"
+        x-cloak
+        data-panel-page="pases"
+        id="pases"
+        class=""
+        aria-labelledby="t-pases"
+      >
         <div class="relative bg-white shadow-soft">
-          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
-            <h2 id="t-pases" class="text-white font-bold text-base">Códigos activos</h2>
-            <button @click="openSheet()" class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5">
-              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> Nuevo código
+          <div
+            class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center"
+          >
+            <h2 id="t-pases" class="text-white font-bold text-base">
+              Códigos activos
+            </h2>
+            <button
+              @click="openSheet()"
+              class="on-dark text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-2 font-semibold flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i>
+              Nuevo código
             </button>
           </div>
 
           <div class="p-5 md:p-6 pt-6">
             <template x-if="livePasses.length === 0">
               <div class="py-10 text-center">
-                <i class="fa-solid fa-qrcode text-2xl text-gray-300" aria-hidden="true"></i>
-                <p class="mt-3 text-sm font-medium text-material-dark">No tienes pases activos</p>
-                <p class="text-xs text-material-text mt-1">Crea un pase para una visita, una entrega o un servicio.</p>
-                <button @click="openSheet()" class="mt-4 text-sm font-semibold text-white bg-material-dark px-4 py-2.5">Crear código</button>
+                <i
+                  class="fa-solid fa-qrcode text-2xl text-gray-300"
+                  aria-hidden="true"
+                ></i>
+                <p class="mt-3 text-sm font-medium text-material-dark">
+                  No tienes pases activos
+                </p>
+                <p class="text-xs text-material-text mt-1">
+                  Crea un pase para una visita, una entrega o un servicio.
+                </p>
+                <button
+                  @click="openSheet()"
+                  class="mt-4 text-sm font-semibold text-white bg-material-dark px-4 py-2.5"
+                >
+                  Crear código
+                </button>
               </div>
             </template>
 
@@ -136,39 +353,105 @@
                 <article class="border border-material-border flex flex-col">
                   <div class="p-4 flex-1">
                     <div class="flex items-center justify-between mb-3">
-                      <span class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold"
-                            :class="expiring(p) ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
-                        <i :class="expiring(p) ? 'fa-solid fa-hourglass-end' : 'fa-solid fa-check'" class="text-[10px]" aria-hidden="true"></i>
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold"
+                        :class="expiring(p) ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
+                      >
+                        <i
+                          :class="expiring(p) ? 'fa-solid fa-hourglass-end' : 'fa-solid fa-check'"
+                          class="text-[10px]"
+                          aria-hidden="true"
+                        ></i>
                         <span x-text="passStatus(p)"></span>
                       </span>
-                      <span class="text-xs text-material-text flex items-center gap-1.5"><i :class="p.icon" aria-hidden="true"></i><span x-text="p.type"></span></span>
+                      <span
+                        class="text-xs text-material-text flex items-center gap-1.5"
+                        ><i :class="p.icon" aria-hidden="true"></i
+                        ><span x-text="p.type"></span
+                      ></span>
                     </div>
-                    <h3 class="text-sm font-bold text-material-dark" x-text="p.name"></h3>
-                    <p class="text-xs text-gray-400 mt-0.5" x-text="'Acceso: ' + accessLabel(p)"></p>
+                    <h3
+                      class="text-sm font-bold text-material-dark"
+                      x-text="p.name"
+                    ></h3>
+                    <p
+                      class="text-xs text-gray-400 mt-0.5"
+                      x-text="'Acceso: ' + accessLabel(p)"
+                    ></p>
 
-                    <p class="code text-2xl text-material-dark mt-4" x-text="grouped(p.code)"></p>
+                    <p
+                      class="code text-2xl text-material-dark mt-4"
+                      x-text="grouped(p.code)"
+                    ></p>
 
                     <div class="mt-4">
-                      <div class="h-1 bg-gray-100" role="progressbar" aria-label="Tiempo restante" :aria-valuenow="percent(p)" aria-valuemin="0" aria-valuemax="100">
-                        <div class="h-1" :class="expiring(p) ? 'bg-amber-500' : 'bg-material-dark'" :style="'width:' + (pct(p)) + '%'"></div>
+                      <div
+                        class="h-1 bg-gray-100"
+                        role="progressbar"
+                        aria-label="Tiempo restante"
+                        :aria-valuenow="percent(p)"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                      >
+                        <div
+                          class="h-1"
+                          :class="expiring(p) ? 'bg-amber-500' : 'bg-material-dark'"
+                          :style="'width:' + (pct(p)) + '%'"
+                        ></div>
                       </div>
                       <p class="text-xs text-gray-500 mt-1.5">
-                        <span x-text="expiryText(p)"></span> · quedan <span class="font-medium text-material-dark" x-text="leftText(p)"></span>
+                        <span x-text="expiryText(p)"></span> · quedan
+                        <span
+                          class="font-medium text-material-dark"
+                          x-text="leftText(p)"
+                        ></span>
                       </p>
                     </div>
                   </div>
 
-                  <div class="border-t border-material-border grid" :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'">
-                    <button @click="copy(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Copiar código">
-                      <i class="fa-regular fa-copy" aria-hidden="true"></i>Copiar</button>
-                    <button @click="share(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Compartir pase">
-                      <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Compartir</button>
-                    <button x-show="canExtend(p)" x-cloak @click="extend(p)" class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1" aria-label="Extender 30 minutos">
-                      <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>+30 min</button>
-                    <button @click="confirmRevoke(p)"
-                            class="py-2.5 text-xs font-medium flex flex-col items-center gap-1"
-                            :class="armed === 'r' + p.id ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'">
-                      <i class="fa-solid fa-ban" aria-hidden="true"></i><span x-text="armed === 'r' + p.id ? '¿Seguro?' : 'Revocar'"></span></button>
+                  <div
+                    class="border-t border-material-border grid"
+                    :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'"
+                  >
+                    <button
+                      @click="copy(p)"
+                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
+                      aria-label="Copiar código"
+                    >
+                      <i class="fa-regular fa-copy" aria-hidden="true"></i
+                      >Copiar
+                    </button>
+                    <button
+                      @click="share(p)"
+                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
+                      aria-label="Compartir pase"
+                    >
+                      <i class="fa-solid fa-share-nodes" aria-hidden="true"></i
+                      >Compartir
+                    </button>
+                    <button
+                      x-show="canExtend(p)"
+                      x-cloak
+                      @click="extend(p)"
+                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
+                      aria-label="Extender 30 minutos"
+                    >
+                      <i
+                        class="fa-solid fa-clock-rotate-left"
+                        aria-hidden="true"
+                      ></i
+                      >+30 min
+                    </button>
+                    <button
+                      @click="confirmRevoke(p)"
+                      class="py-2.5 text-xs font-medium flex flex-col items-center gap-1"
+                      :class="armed === 'r' + p.id ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'"
+                    >
+                      <i class="fa-solid fa-ban" aria-hidden="true"></i
+                      ><span
+                        x-text="armed === 'r' + p.id ? '¿Seguro?' : 'Revocar'"
+                      ></span>
+                    </button>
                   </div>
                 </article>
               </template>
@@ -178,61 +461,174 @@
       </section>
 
       <!-- ACTIVIDAD -->
-<section x-show="page === 'actividad'" x-cloak data-panel-page="actividad" id="actividad" class="" aria-labelledby="t-act">
+      <section
+        x-show="page === 'actividad'"
+        x-cloak
+        data-panel-page="actividad"
+        id="actividad"
+        class=""
+        aria-labelledby="t-act"
+      >
         <div class="relative bg-white shadow-soft">
-          <div class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center">
-            <h2 id="t-act" class="text-white font-bold text-base">Actividad reciente</h2>
+          <div
+            class="px-5 md:px-6 py-4 bg-material-dark shadow-floating mx-4 -mt-6 flex justify-between items-center"
+          >
+            <h2 id="t-act" class="text-white font-bold text-base">
+              Actividad reciente
+            </h2>
           </div>
-          <div class="px-5 md:px-6 pt-5 grid gap-3 md:grid-cols-3"><label class="text-xs">Buscar en historial<input x-model="activityQuery" type="search" class="mt-1 w-full border border-gray-300 p-2" placeholder="Referencia, código o usuario"></label><label class="text-xs">Filtrar portón<select aria-label="Filtrar portón" x-model="activityGate" class="mt-1 w-full border border-gray-300 p-2"><option value="">Todos los portones</option><template x-for="d in doors" :key="d.id"><option :value="d.id" x-text="d.name"></option></template></select></label><label class="text-xs">Filtrar resultado<select aria-label="Filtrar resultado" x-model="activityResult" class="mt-1 w-full border border-gray-300 p-2"><option value="">Todos los resultados</option><option value="sent">Orden enviada</option><option value="not_sent">No enviada</option><option value="uncertain">Requiere revisión</option><option value="pending">En curso</option><option value="closed">Revisión cerrada</option></select></label></div><div class="px-6 pt-3 flex justify-between gap-3 text-xs"><span>Últimos 200 registros · retención de 30 días</span><button @click="exportActivity()" class="font-semibold underline">Exportar historial CSV</button></div>
-          <div class="px-5 md:px-6 pt-5 flex gap-2" role="group" aria-label="Filtrar actividad">
-            <button @click="filter = 'todo'" :aria-pressed="filter === 'todo'"
-                    class="px-3 py-1.5 text-xs font-medium border"
-                    :class="filter === 'todo' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">Todo</button>
-            <button @click="filter = 'rechazados'" :aria-pressed="filter === 'rechazados'"
-                    class="px-3 py-1.5 text-xs font-medium border"
-                    :class="filter === 'rechazados' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'">
-              Rechazados <span x-text="rejectedCount"></span></button>
+          <div class="px-5 md:px-6 pt-5 grid gap-3 md:grid-cols-3">
+            <label class="text-xs"
+              >Buscar en historial<input
+                x-model="activityQuery"
+                type="search"
+                class="mt-1 w-full border border-gray-300 p-2"
+                placeholder="Referencia, código o usuario" /></label
+            ><label class="text-xs"
+              >Filtrar portón<select
+                aria-label="Filtrar portón"
+                x-model="activityGate"
+                class="mt-1 w-full border border-gray-300 p-2"
+              >
+                <option value="">Todos los portones</option>
+                <template x-for="d in doors" :key="d.id"
+                  ><option :value="d.id" x-text="d.name"></option
+                ></template></select></label
+            ><label class="text-xs"
+              >Filtrar resultado<select
+                aria-label="Filtrar resultado"
+                x-model="activityResult"
+                class="mt-1 w-full border border-gray-300 p-2"
+              >
+                <option value="">Todos los resultados</option>
+                <option value="sent">Orden enviada</option>
+                <option value="not_sent">No enviada</option>
+                <option value="uncertain">Requiere revisión</option>
+                <option value="pending">En curso</option>
+                <option value="closed">Revisión cerrada</option>
+              </select></label
+            >
+          </div>
+          <div class="px-6 pt-3 flex justify-between gap-3 text-xs">
+            <span>Últimos 200 registros · retención de 30 días</span
+            ><button @click="exportActivity()" class="font-semibold underline">
+              Exportar historial CSV
+            </button>
+          </div>
+          <div
+            class="px-5 md:px-6 pt-5 flex gap-2"
+            role="group"
+            aria-label="Filtrar actividad"
+          >
+            <button
+              @click="filter = 'todo'"
+              :aria-pressed="filter === 'todo'"
+              class="px-3 py-1.5 text-xs font-medium border"
+              :class="filter === 'todo' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+            >
+              Todo
+            </button>
+            <button
+              @click="filter = 'rechazados'"
+              :aria-pressed="filter === 'rechazados'"
+              class="px-3 py-1.5 text-xs font-medium border"
+              :class="filter === 'rechazados' ? 'bg-material-dark text-white border-material-dark' : 'border-gray-300 text-material-dark hover:bg-gray-50'"
+            >
+              Rechazados <span x-text="rejectedCount"></span>
+            </button>
           </div>
           <ul class="mt-3 pb-2">
-            <template x-for="(a, i) in visibleActivity" :key="i + a.title + a.time">
-              <li class="flex items-center gap-4 px-5 md:px-6 py-3 border-b border-material-border last:border-0">
-                <div class="h-9 w-9 shrink-0 bg-gray-50 flex items-center justify-center text-material-dark"><i :class="a.icon" class="text-sm" aria-hidden="true"></i></div>
+            <template
+              x-for="(a, i) in visibleActivity"
+              :key="i + a.title + a.time"
+            >
+              <li
+                class="flex items-center gap-4 px-5 md:px-6 py-3 border-b border-material-border last:border-0"
+              >
+                <div
+                  class="h-9 w-9 shrink-0 bg-gray-50 flex items-center justify-center text-material-dark"
+                >
+                  <i :class="a.icon" class="text-sm" aria-hidden="true"></i>
+                </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-material-dark truncate" x-text="a.title"></p>
-                  <p class="text-xs text-gray-400 truncate" x-text="a.meta"></p><p class="text-xs mt-1 font-mono" x-text="a.code ? 'Código: ' + grouped(a.code) : 'Apertura desde el panel'"></p>
-                  <p x-show="!a.ok" class="text-xs text-red-600 mt-0.5" x-text="a.reason"></p>
+                  <p
+                    class="text-sm font-medium text-material-dark truncate"
+                    x-text="a.title"
+                  ></p>
+                  <p class="text-xs text-gray-400 truncate" x-text="a.meta"></p>
+                  <p
+                    class="text-xs mt-1 font-mono"
+                    x-text="a.code ? 'Código: ' + grouped(a.code) : 'Apertura desde el panel'"
+                  ></p>
+                  <p
+                    x-show="!a.ok"
+                    class="text-xs text-red-600 mt-0.5"
+                    x-text="a.reason"
+                  ></p>
                 </div>
                 <div class="text-right shrink-0">
-                  <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold" :class="a.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                    <i :class="a.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark'" class="text-[10px]" aria-hidden="true"></i><span x-text="a.ok ? 'Éxito' : 'Rechazado'"></span>
+                  <span
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold"
+                    :class="a.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                  >
+                    <i
+                      :class="a.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark'"
+                      class="text-[10px]"
+                      aria-hidden="true"
+                    ></i
+                    ><span x-text="a.ok ? 'Éxito' : 'Rechazado'"></span>
                   </span>
                   <p class="text-xs text-gray-500 mt-1" x-text="a.time"></p>
                 </div>
               </li>
             </template>
-            <li x-show="visibleActivity.length === 0" x-cloak class="px-6 py-8 text-center text-sm text-material-text">No hay registros con estos filtros.</li>
+            <li
+              x-show="visibleActivity.length === 0"
+              x-cloak
+              class="px-6 py-8 text-center text-sm text-material-text"
+            >
+              No hay registros con estos filtros.
+            </li>
           </ul>
         </div>
       </section>
-    <!-- PROFILE -->
-</div>
-
-</main>
+      <!-- PROFILE -->
+    </div>
+  </main>
 
   <!-- NAV INFERIOR (móvil) -->
-  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-material-border shadow-floating" style="padding-bottom: env(safe-area-inset-bottom)" aria-label="Navegación rápida">
+  <nav
+    class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-material-border shadow-floating"
+    style="padding-bottom: env(safe-area-inset-bottom)"
+    aria-label="Navegación rápida"
+  >
     <ul class="grid grid-cols-4">
-      <template x-for="i in [['accesos','Accesos','fa-door-open'],['pases','Pases','fa-qrcode'],['actividad','Historial','fa-clock-rotate-left']]" :key="i[0]">
+      <template
+        x-for="i in [['accesos','Accesos','fa-door-open'],['pases','Pases','fa-qrcode'],['actividad','Historial','fa-clock-rotate-left']]"
+        :key="i[0]"
+      >
         <li>
-          <a :href="'#' + i[0]" @click.prevent="selectTab(i[0])" :aria-current="tab === i[0] ? 'page' : null"
-             class="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2"
-             :class="tab === i[0] ? 'text-material-dark border-material-dark' : 'text-material-text border-transparent'">
-            <i :class="'fa-solid ' + i[2]" class="text-base" aria-hidden="true"></i><span x-text="i[1]"></span>
+          <a
+            :href="'#' + i[0]"
+            @click.prevent="selectTab(i[0])"
+            :aria-current="tab === i[0] ? 'page' : null"
+            class="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2"
+            :class="tab === i[0] ? 'text-material-dark border-material-dark' : 'text-material-text border-transparent'"
+          >
+            <i
+              :class="'fa-solid ' + i[2]"
+              class="text-base"
+              aria-hidden="true"
+            ></i
+            ><span x-text="i[1]"></span>
           </a>
         </li>
       </template>
       <li>
-        <button @click="drawer = true" class="w-full flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-material-text border-t-2 border-transparent">
+        <button
+          @click="drawer = true"
+          class="w-full flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-material-text border-t-2 border-transparent"
+        >
           <i class="fa-solid fa-bars text-base" aria-hidden="true"></i>Más
         </button>
       </li>
@@ -240,46 +636,247 @@
   </nav>
 
   <!-- NUEVO PASE -->
-  <div x-trap.inert.noscroll="sheet" x-show="sheet" x-cloak class="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-    <div class="absolute inset-0 bg-black/40" @click="sheet = false" x-transition.opacity></div>
-    <form @submit.prevent="createPass()" novalidate
-          class="relative bg-white w-full md:max-w-md shadow-floating max-h-[92vh] overflow-y-auto"
-          x-show="sheet" x-transition:enter="transition duration-200" x-transition:enter-start="translate-y-6 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
+  <div
+    x-trap.inert.noscroll="sheet"
+    x-show="sheet"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-end md:items-center justify-center"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="sheet-title"
+  >
+    <div
+      class="absolute inset-0 bg-black/40"
+      @click="sheet = false"
+      x-transition.opacity
+    ></div>
+    <form
+      @submit.prevent="createPass()"
+      novalidate
+      class="relative bg-white w-full md:max-w-md shadow-floating max-h-[92vh] overflow-y-auto"
+      x-show="sheet"
+      x-transition:enter="transition duration-200"
+      x-transition:enter-start="translate-y-6 opacity-0"
+      x-transition:enter-end="translate-y-0 opacity-100"
+    >
       <div class="px-6 py-4 bg-material-dark flex items-center justify-between">
         <h2 id="sheet-title" class="text-white font-bold">Nuevo código</h2>
-        <button type="button" @click="sheet = false" class="on-dark text-white/80 hover:text-white w-8 h-8" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        <button
+          type="button"
+          @click="sheet = false"
+          class="on-dark text-white/80 hover:text-white w-8 h-8"
+          aria-label="Cerrar"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
       <div class="p-6 space-y-5">
         <div>
-          <label for="f-name" class="text-sm font-medium text-material-dark">Nombre o referencia</label>
-          <input id="f-name" x-ref="name" x-model="passName" type="text" placeholder="Ej. María López" autocomplete="off"
-                 class="mt-1.5 w-full border border-gray-300 px-3 py-2.5 text-sm text-material-dark placeholder-gray-400 focus:border-material-dark"
-                 :aria-invalid="formError && !form.name.trim() ? 'true' : 'false'">
+          <label for="f-name" class="text-sm font-medium text-material-dark"
+            >Nombre o referencia</label
+          >
+          <input
+            id="f-name"
+            x-ref="name"
+            x-model="passName"
+            type="text"
+            placeholder="Ej. María López"
+            autocomplete="off"
+            class="mt-1.5 w-full border border-gray-300 px-3 py-2.5 text-sm text-material-dark placeholder-gray-400 focus:border-material-dark"
+            :aria-invalid="formError && !form.name.trim() ? 'true' : 'false'"
+          />
         </div>
 
-        <fieldset><legend class="text-sm font-medium text-material-dark">Tipo</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['repeat','Con vigencia'],['visit','Un solo uso'],['unlimited','Permanente']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="mode" class="peer sr-only" :value="o[0]" x-model="passMode"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><p x-show="form.mode === 'visit'" class="text-xs mt-3">Tienes 7 días para comenzar la visita. Desde la primera orden confirmada tendrás 10 minutos para volver a abrir.</p><p x-show="form.mode === 'unlimited'" class="text-xs mt-3">Funciona hasta que lo revoques.</p></fieldset><fieldset x-show="form.mode === 'repeat'"><legend class="text-sm font-medium text-material-dark">Vigencia</legend><div class="mt-2 grid grid-cols-3"><template x-for="o in [['1','1 día'],['7','7 días'],['custom','Otra cantidad']]" :key="o[0]"><label class="cursor-pointer"><input type="radio" name="duration" class="peer sr-only" :value="o[0]" x-model="durationDays"><span class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline" x-text="o[1]"></span></label></template></div><div x-show="durationDays === 'custom'" class="mt-3"><label for="custom-days" class="text-sm">Cantidad de días (1 a 30)</label><input id="custom-days" type="number" min="1" max="30" step="1" x-model.number="customDays" class="mt-2 w-full border border-gray-300 p-3"></div></fieldset>
-
         <fieldset>
-          <legend class="text-sm font-medium text-material-dark">Accesos permitidos</legend>
-          <div class="mt-1.5 space-y-2">
-            <template x-for="d in doors" :key="d.id"><label class="flex items-center gap-3 text-sm text-material-dark"><input type="checkbox" x-model="passDoors" :value="d.id" class="w-4 h-4 accent-[#344767]"><span x-text="d.name"></span></label></template>
+          <legend class="text-sm font-medium text-material-dark">Tipo</legend>
+          <div class="mt-2 grid grid-cols-3">
+            <template
+              x-for="o in [['repeat','Con vigencia'],['visit','Un solo uso'],['unlimited','Permanente']]"
+              :key="o[0]"
+              ><label class="cursor-pointer"
+                ><input
+                  type="radio"
+                  name="mode"
+                  class="peer sr-only"
+                  :value="o[0]"
+                  x-model="passMode" /><span
+                  class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline"
+                  x-text="o[1]"
+                ></span></label
+            ></template>
+          </div>
+          <p x-show="form.mode === 'visit'" class="text-xs mt-3">
+            Tienes 7 días para comenzar la visita. Desde la primera orden
+            confirmada tendrás 10 minutos para volver a abrir.
+          </p>
+          <p x-show="form.mode === 'unlimited'" class="text-xs mt-3">
+            Funciona hasta que lo revoques.
+          </p>
+        </fieldset>
+        <fieldset x-show="form.mode === 'repeat'">
+          <legend class="text-sm font-medium text-material-dark">
+            Vigencia
+          </legend>
+          <div class="mt-2 grid grid-cols-3">
+            <template
+              x-for="o in [['1','1 día'],['7','7 días'],['custom','Otra cantidad']]"
+              :key="o[0]"
+              ><label class="cursor-pointer"
+                ><input
+                  type="radio"
+                  name="duration"
+                  class="peer sr-only"
+                  :value="o[0]"
+                  x-model="durationDays" /><span
+                  class="block text-center border border-gray-300 py-3 text-sm peer-checked:bg-material-dark peer-checked:text-white peer-focus-visible:outline"
+                  x-text="o[1]"
+                ></span></label
+            ></template>
+          </div>
+          <div x-show="durationDays === 'custom'" class="mt-3">
+            <label for="custom-days" class="text-sm"
+              >Cantidad de días (1 a 30)</label
+            ><input
+              id="custom-days"
+              type="number"
+              min="1"
+              max="30"
+              step="1"
+              x-model.number="customDays"
+              class="mt-2 w-full border border-gray-300 p-3"
+            />
           </div>
         </fieldset>
 
-        <p x-show="formError" x-cloak class="text-sm text-red-600 flex items-center gap-2" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="formError"></span></p>
+        <fieldset>
+          <legend class="text-sm font-medium text-material-dark">
+            Accesos permitidos
+          </legend>
+          <div class="mt-1.5 space-y-2">
+            <template x-for="d in doors" :key="d.id"
+              ><label class="flex items-center gap-3 text-sm text-material-dark"
+                ><input
+                  type="checkbox"
+                  x-model="passDoors"
+                  :value="d.id"
+                  class="w-4 h-4 accent-[#344767]" /><span
+                  x-text="d.name"
+                ></span></label
+            ></template>
+          </div>
+        </fieldset>
+
+        <p
+          x-show="formError"
+          x-cloak
+          class="text-sm text-red-600 flex items-center gap-2"
+          role="alert"
+        >
+          <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i
+          ><span x-text="formError"></span>
+        </p>
       </div>
       <div class="px-6 pb-6 flex gap-3">
-        <button type="button" @click="sheet = false" class="flex-1 py-3 border border-gray-300 text-sm font-semibold text-material-dark hover:bg-gray-50">Cancelar</button>
-        <button type="submit" :disabled="busy" class="flex-1 py-3 bg-material-dark text-white text-sm font-semibold hover:bg-material-darker">Crear código</button>
+        <button
+          type="button"
+          @click="sheet = false"
+          class="flex-1 py-3 border border-gray-300 text-sm font-semibold text-material-dark hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          :disabled="busy"
+          class="flex-1 py-3 bg-material-dark text-white text-sm font-semibold hover:bg-material-darker"
+        >
+          Crear código
+        </button>
       </div>
     </form>
   </div>
 
-<div x-show="confirmTarget" x-cloak x-trap.inert.noscroll="confirmTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Confirmar apertura"><div class="bg-white shadow-floating w-full max-w-md"><h2 class="bg-material-dark text-white font-bold px-6 py-4">Confirmar apertura</h2><div class="p-6"><p>¿Enviar una orden a <strong x-text="confirmName"></strong>?</p><div class="flex justify-end gap-3 mt-6"><button @click="confirmTarget = null" class="border px-4 py-3">Cancelar</button><button @click="confirmSend()" class="bg-material-dark text-white px-4 py-3">Enviar orden</button></div></div></div></div>
-<div x-show="resultCard" x-cloak x-trap.inert.noscroll="resultCard" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Código creado"><div class="bg-white shadow-floating w-full max-w-md"><h2 class="bg-material-dark text-white font-bold px-6 py-4">Código creado</h2><template x-if="resultCard"><div class="p-6"><h3 class="font-bold" x-text="resultCard.name"></h3><p class="font-mono text-3xl my-4" x-text="grouped(resultCard.code)"></p><p x-text="resultCard.type"></p><p class="text-sm mt-2" x-text="accessLabel(resultCard)"></p><p class="text-sm mt-2" x-text="expiryText(resultCard)"></p><p x-show="resultCard.visit" class="text-xs mt-3">Una visita: 10 minutos para reintentar desde la primera orden confirmada.</p><div class="grid grid-cols-2 gap-3 mt-6"><button @click="copy(resultCard)" class="border p-3 text-sm">Copiar código</button><button @click="share(resultCard)" class="bg-material-dark text-white p-3 text-sm">Compartir por WhatsApp</button></div><button @click="resultCard = null" class="w-full mt-4 p-2 text-sm">Cerrar</button></div></template></div></div>
+  <div
+    x-show="confirmTarget"
+    x-cloak
+    x-trap.inert.noscroll="confirmTarget"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Confirmar apertura"
+  >
+    <div class="bg-white shadow-floating w-full max-w-md">
+      <h2 class="bg-material-dark text-white font-bold px-6 py-4">
+        Confirmar apertura
+      </h2>
+      <div class="p-6">
+        <p>¿Enviar una orden a <strong x-text="confirmName"></strong>?</p>
+        <div class="flex justify-end gap-3 mt-6">
+          <button @click="confirmTarget = null" class="border px-4 py-3">
+            Cancelar</button
+          ><button
+            @click="confirmSend()"
+            class="bg-material-dark text-white px-4 py-3"
+          >
+            Enviar orden
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    x-show="resultCard"
+    x-cloak
+    x-trap.inert.noscroll="resultCard"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Código creado"
+  >
+    <div class="bg-white shadow-floating w-full max-w-md">
+      <h2 class="bg-material-dark text-white font-bold px-6 py-4">
+        Código creado
+      </h2>
+      <template x-if="resultCard"
+        ><div class="p-6">
+          <h3 class="font-bold" x-text="resultCard.name"></h3>
+          <p
+            class="font-mono text-3xl my-4"
+            x-text="grouped(resultCard.code)"
+          ></p>
+          <p x-text="resultCard.type"></p>
+          <p class="text-sm mt-2" x-text="accessLabel(resultCard)"></p>
+          <p class="text-sm mt-2" x-text="expiryText(resultCard)"></p>
+          <p x-show="resultCard.visit" class="text-xs mt-3">
+            Una visita: 10 minutos para reintentar desde la primera orden
+            confirmada.
+          </p>
+          <div class="grid grid-cols-2 gap-3 mt-6">
+            <button @click="copy(resultCard)" class="border p-3 text-sm">
+              Copiar código</button
+            ><button
+              @click="share(resultCard)"
+              class="bg-material-dark text-white p-3 text-sm"
+            >
+              Compartir por WhatsApp
+            </button>
+          </div>
+          <button @click="resultCard = null" class="w-full mt-4 p-2 text-sm">
+            Cerrar
+          </button>
+        </div></template
+      >
+    </div>
+  </div>
   <!-- TOAST -->
-  <div x-show="toastOn" x-cloak x-transition.opacity role="status" aria-live="polite"
-       class="fixed z-50 bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2">
-    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i><span x-text="toastMsg"></span>
+  <div
+    x-show="toastOn"
+    x-cloak
+    x-transition.opacity
+    role="status"
+    aria-live="polite"
+    class="fixed z-50 bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-material-dark text-white text-sm px-4 py-3 shadow-floating flex items-center gap-2"
+  >
+    <i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i
+    ><span x-text="toastMsg"></span>
   </div>
 </body>

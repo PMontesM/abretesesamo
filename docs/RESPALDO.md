@@ -1,21 +1,29 @@
-# Respaldo del proyecto
+# Publicación y respaldo
 
-Este repositorio contiene código, pruebas, esquema y migraciones D1, documentación y firmware ESPHome. Excluye usuarios, códigos, historial, contraseñas y copias de la base de datos.
+El repositorio guarda código, firmware, esquema, migraciones y pruebas. La base de datos y los secretos no se suben al código de GitHub.
 
-## Desarrollo
+## Publicar esta instancia
 
-Requiere Node.js 24 o posterior. Ejecuta `npm ci`, `npm run build` y `npm test`. La interfaz se prueba con `npm run test:ui`; consulta tests/ui.mjs para las rutas del navegador y del paquete de pruebas.
+La configuración real, sin contraseñas, está en `wrangler.production.json`. No depende de la carpeta de trabajo anterior. Requiere Node.js 24, `npm ci`, `npm run setup:frontend` y autenticación con `npx wrangler login`.
 
-wrangler.toml es una plantilla: completa el ID de D1 del entorno correspondiente. Para actualizar producción no crees otra base ni reinstales el esquema. Revisa y aplica únicamente las migraciones pendientes.
+- `npm run db:migrate`: respalda y aplica solo migraciones pendientes, registradas en `schema_migrations`. Nunca repetir manualmente migraciones ya registradas.
+- `npm run release` (también `npm run deploy`): compila, ejecuta pruebas del backend y navegador, comprueba las migraciones, respalda y publica. Cualquier fallo detiene la publicación.
+- El navegador se instala con `npx playwright install chromium`; en Windows puede usarse `BROWSER_PATH` para Edge. `PLAYWRIGHT_PATH` permite un paquete de pruebas externo.
 
-## Respaldo separado
+Para incorporar exclusivamente una instalación existente y verificada hasta la migración 012, usar una vez `npm run db:migrate -- --baseline-current`. Esta opción comprueba la estructura y códigos únicos, respalda, registra el historial hasta 012 y aplica las posteriores. No usar para adivinar el estado de una base desconocida. Una instalación nueva se describe en INSTALACION.md.
 
-Guarda exportaciones de D1 con fecha y acceso restringido. Contienen datos privados y credenciales MQTT cifradas. Guarda ADMIN_SIGNING_SECRET, MQTT_ENCRYPTION_KEY, las credenciales MQTT y secrets.yaml en un gestor seguro. MQTT_ENCRYPTION_KEY es necesaria para recuperar las credenciales cifradas. Conserva también la configuración de cuenta, dominio y programación de Cloudflare.
+## Copias cifradas
 
-El respaldo anterior a la limpieza de septiembre de 2026 permanece en work/private-backups del proyecto de trabajo original; no se sube a GitHub.
+`npm run backup` exporta D1 y guarda un archivo `.private/backups/*.psbk` cifrado con AES-256-GCM. El SQL temporal se elimina. La clave local se genera en `.private/backup.key` o se toma de `BACKUP_ENCRYPTION_KEY` (64 caracteres hexadecimales). Conservar esta clave fuera del equipo, en un gestor seguro: sin ella no se recupera el respaldo.
 
-Para recuperar producción, restaura primero en una base separada, configura los secretos originales y verifica la aplicación antes de cambiar el dominio. Evita activar dispositivos reales durante las pruebas. INSTALACION.md corresponde a una instalación nueva.
+`node tools/restore-check.mjs RUTA.psbk` descifra en memoria, reconstruye una base SQLite local y comprueba relaciones. No toca Cloudflare. Con un segundo argumento genera un SQL privado para restaurar primero en una D1 separada. Antes de cambiar el dominio, verificar cuentas, permisos y códigos sin activar hardware real.
 
-GitHub guarda los cambios confirmados y subidos. No se han configurado copias automáticas de D1 ni despliegues automáticos.
+Los secretos `ADMIN_SIGNING_SECRET`, `MQTT_ENCRYPTION_KEY`, `TURNSTILE_SECRET_KEY` y `secrets.yaml` del firmware deben guardarse aparte. La clave MQTT original permite descifrar las credenciales almacenadas en D1. Las reglas del dominio y el widget Turnstile se configuran por separado.
 
-Para restaurar la protección de tráfico, conservar también `TURNSTILE_SECRET_KEY` en un gestor seguro y seguir [PROTECCION-TRAFICO.md](PROTECCION-TRAFICO.md). Las reglas de seguridad del dominio y los widgets de Turnstile se configuran por separado del despliegue del Worker.
+## GitHub Actions
+
+`checks.yml` ejecuta compilación, pruebas de backend y navegador en cada push y pull request. No publica automáticamente.
+
+`backup.yml` prepara un respaldo cifrado diario a las 10:00 UTC, verifica que se pueda restaurar y lo conserva como artefacto privado durante siete días. Requiere dos secretos de Actions: `CLOUDFLARE_BACKUP_TOKEN` (token Cloudflare con permiso D1 para exportar esta cuenta) y `BACKUP_ENCRYPTION_KEY`. La programación no se considera operativa hasta configurar ambos y completar una ejecución manual satisfactoria. GitHub puede retrasar tareas programadas; revisar ejecuciones y avisos de fallo. Consumen cuotas del plan de GitHub y Cloudflare.
+
+No subir SQL, claves ni archivos `.private` al repositorio. El respaldo diario complementa el respaldo previo a cada migración/publicación; no sustituye una prueba de restauración.

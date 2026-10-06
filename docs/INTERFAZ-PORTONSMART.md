@@ -29,7 +29,7 @@ npm test
 npm run test:ui
 ```
 
-Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. Utilizan bases en memoria y dispositivos simulados. `src/html/templates.js` y `src/html/client.js` son generados: editar las fuentes de frontend y compilar.
+Las pruebas de navegador aceptan PLAYWRIGHT_PATH, BROWSER_PATH y WORKER_BUNDLE. Utilizan bases en memoria y dispositivos simulados. `src/html/templates.js` es generado: editar las fuentes de frontend y compilar.
 
 ## Opciones integradas en el diseño nuevo
 
