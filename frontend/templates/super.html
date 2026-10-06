@@ -608,19 +608,12 @@
           </div></template
         >
       </section>
-      <div x-show="page === 'flota'" x-cloak class="mt-8 flex gap-4 text-sm">
+      <div x-show="page === 'flota'" x-cloak class="mb-4 text-sm">
         <a
           href="?section=configuration"
           @click.prevent="goTo('configuration')"
-          :aria-current="page === 'configuration' ? 'page' : null"
-          class="underline"
-          >Inventario, registro y asignación de relés</a
-        ><a
-          href="?section=configuration"
-          @click.prevent="goTo('configuration')"
-          :aria-current="page === 'configuration' ? 'page' : null"
-          class="underline"
-          >Configurar MQTT</a
+          class="inline-flex items-center justify-center bg-material-dark text-white px-4 py-3 font-medium"
+          >Administrar relés y conexión MQTT</a
         >
       </div>
       <!-- FLOTA -->
