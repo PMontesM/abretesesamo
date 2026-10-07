@@ -1,4 +1,10 @@
 import {
+  RECOVERY_PAUSE_MS,
+  ACTIVITY_RETENTION_MS,
+  AUDIT_RETENTION_MS,
+} from "./access-policy.js";
+import { recoverAccess } from "./access-recovery.js";
+import {
   provisionPhoneStatements,
   normalizePhone,
 } from "./account-provision.js";
@@ -473,6 +479,7 @@ export async function revokeCode(
 }
 // Claim and all authorization predicates are one atomic statement. No read/delete race.
 export async function claimCode(env, tenantId, code, selected = null) {
+  await recoverAccess(env, tenantId);
   const row = await env.DB.prepare(
     `UPDATE codes SET status='pending',claim_token=?,claimed_at=?
  WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)
@@ -506,12 +513,14 @@ export async function finishCode(env, row, gate, outcome) {
         ? "active"
         : "uncertain";
   const started =
-    outcome === "sent" && row.visit_mode
-      ? row.visit_started_at || Date.now()
+    (outcome === "sent" ||
+      (outcome === "uncertain" && gate.trigger_type === "mqtt")) &&
+    row.visit_mode
+      ? row.visit_started_at || row.claimed_at || Date.now()
       : null;
   await env.DB.batch([
     env.DB.prepare(
-      "UPDATE codes SET status=?,claim_token=NULL,visit_started_at=COALESCE(visit_started_at,?),expires_at=CASE WHEN ? IS NOT NULL THEN ?+600000 ELSE expires_at END WHERE tenant_id=? AND code=? AND claim_token=? AND status='pending'",
+      "UPDATE codes SET status=?,claim_token=NULL,visit_started_at=COALESCE(visit_started_at,?),expires_at=CASE WHEN ? IS NOT NULL THEN MIN(COALESCE(expires_at,9223372036854775807),?+600000) ELSE expires_at END WHERE tenant_id=? AND code=? AND claim_token=? AND status='pending'",
     ).bind(
       status,
       started,
@@ -572,6 +581,18 @@ export const logOpen = (
 ) =>
   logStatement(env, tenantId, gate, code, label, owner, outcome, ownerId).run();
 export async function resolveCode(env, tenantId, code, action, actor = null) {
+  await recoverAccess(env, tenantId);
+  if (action === "retry") {
+    const mqtt = await env.DB.prepare(
+      "SELECT 1 FROM codes c JOIN gates g ON g.id=c.gate_id WHERE c.tenant_id=? AND c.code=? AND c.status IN ('pending','uncertain') AND g.trigger_type='mqtt'",
+    )
+      .bind(tenantId, code)
+      .first();
+    if (mqtt)
+      throw new InputError(
+        "Este acceso se recuperará automáticamente al terminar la pausa de protección. No es necesario reactivarlo.",
+      );
+  }
   if (!["retry", "used"].includes(action))
     throw new InputError("Resolución inválida");
   const r = await env.DB.batch([
@@ -581,7 +602,7 @@ export async function resolveCode(env, tenantId, code, action, actor = null) {
       action === "retry" ? "active" : "used",
       tenantId,
       code,
-      Date.now() - 120000,
+      Date.now() - RECOVERY_PAUSE_MS,
     ),
     ...auditStatements(
       env,
@@ -647,7 +668,7 @@ export async function dashboard(env, user) {
 export async function listTenants(env) {
   const tenants = await rows(
     env.DB.prepare(
-      "SELECT t.*, (SELECT COUNT(*) FROM codes c WHERE c.tenant_id=t.id AND c.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM direct_operations o WHERE o.tenant_id=t.id AND o.status IN ('pending','uncertain')) AS needs_review FROM tenants t ORDER BY needs_review DESC,t.created_at DESC",
+      "SELECT t.*, (SELECT COUNT(*) FROM codes c WHERE c.tenant_id=t.id AND c.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM direct_operations o WHERE o.tenant_id=t.id AND o.status IN ('pending','uncertain','unconfirmed')) AS needs_review FROM tenants t ORDER BY needs_review DESC,t.created_at DESC",
     ),
   );
   const gates = await rows(
@@ -673,7 +694,7 @@ export async function reports(env) {
       Date.now(),
       Date.now() - 86400000,
       Date.now() - 7 * 86400000,
-      Date.now() - 30 * 86400000,
+      Date.now() - ACTIVITY_RETENTION_MS,
     ),
   );
 }
@@ -696,6 +717,7 @@ export const listAudit = (env) =>
     ),
   );
 export async function cleanup(env) {
+  await recoverAccess(env);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM account_recovery WHERE expires_at<?").bind(
       Date.now(),
@@ -705,28 +727,34 @@ export async function cleanup(env) {
     ),
     env.DB.prepare(
       "UPDATE relay_commands SET status='uncertain' WHERE status='pending' AND created_at<?",
-    ).bind(Date.now() - 120000),
+    ).bind(Date.now() - RECOVERY_PAUSE_MS),
     env.DB.prepare(
       "UPDATE relay_commands SET status='completed' WHERE status='cooldown' AND release_at<=?",
     ).bind(Date.now()),
     env.DB.prepare(
-      "DELETE FROM relay_commands WHERE status IN ('completed','not_sent','closed') AND created_at<?",
-    ).bind(Date.now() - 30 * 86400000),
+      "DELETE FROM relay_commands WHERE status IN ('completed','not_sent','closed','unconfirmed') AND created_at<?",
+    ).bind(Date.now() - ACTIVITY_RETENTION_MS),
     env.DB.prepare(
       "UPDATE logs SET outcome='uncertain' WHERE outcome='pending' AND id IN (SELECT id FROM direct_operations WHERE status='pending' AND created_at<?)",
-    ).bind(Date.now() - 120000),
+    ).bind(Date.now() - RECOVERY_PAUSE_MS),
     env.DB.prepare(
       "UPDATE direct_operations SET status='uncertain' WHERE status='pending' AND created_at<?",
-    ).bind(Date.now() - 120000),
+    ).bind(Date.now() - RECOVERY_PAUSE_MS),
     env.DB.prepare(
       "UPDATE codes SET status='uncertain' WHERE status='pending' AND claimed_at<?",
-    ).bind(Date.now() - 120000),
+    ).bind(Date.now() - RECOVERY_PAUSE_MS),
     env.DB.prepare(
       "UPDATE codes SET status='expired' WHERE status='active' AND expires_at IS NOT NULL AND expires_at<=?",
     ).bind(Date.now()),
-    env.DB.prepare("DELETE FROM logs WHERE at<?").bind(
-      Date.now() - 30 * 86400000,
+    env.DB.prepare(
+      "DELETE FROM direct_operations WHERE status IN ('sent','closed','unconfirmed') AND created_at<?",
+    ).bind(Date.now() - ACTIVITY_RETENTION_MS),
+    env.DB.prepare("DELETE FROM platform_audit_log WHERE at<?").bind(
+      Date.now() - AUDIT_RETENTION_MS,
     ),
+    env.DB.prepare(
+      "DELETE FROM logs WHERE at<? AND NOT EXISTS(SELECT 1 FROM direct_operations o WHERE o.id=logs.id AND o.status IN ('pending','uncertain')) AND NOT EXISTS(SELECT 1 FROM codes c WHERE c.tenant_id=logs.tenant_id AND c.code=logs.code AND c.status IN ('pending','uncertain'))",
+    ).bind(Date.now() - ACTIVITY_RETENTION_MS),
     env.DB.prepare("DELETE FROM login_attempts WHERE expires_at<?").bind(
       Date.now(),
     ),
@@ -784,6 +812,7 @@ export async function setSupport(env, tenantId, value, actor) {
   return phone;
 }
 export async function visitorStatus(env, tenantId, code) {
+  await recoverAccess(env, tenantId);
   const row = await env.DB.prepare(
     "SELECT c.*,g.name AS gate_name,g.status AS gate_status,u.role FROM codes c JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id JOIN users u ON u.id=c.owner_id AND u.tenant_id=c.tenant_id WHERE c.tenant_id=? AND c.code=? AND (u.role='master' OR EXISTS(SELECT 1 FROM user_gates p WHERE p.tenant_id=c.tenant_id AND p.user_id=c.owner_id AND p.gate_id=c.gate_id))",
   )
@@ -806,9 +835,9 @@ export async function visitorStatus(env, tenantId, code) {
     revoked: "Este acceso fue cancelado. Contacta a quien te invitó.",
     used: "Este acceso ya fue utilizado. Pide uno nuevo.",
     pending:
-      "El envío está pendiente de confirmar. No repitas la apertura; contacta al administrador.",
+      "El envío está pendiente de confirmar. Espera unos dos minutos; los accesos MQTT se recuperan automáticamente.",
     uncertain:
-      "No pudimos confirmar el envío. Contacta al administrador antes de repetir.",
+      "No pudimos confirmar el envío. Espera unos dos minutos y consulta el estado antes de solicitar otra apertura. Si persiste, contacta al administrador.",
     unavailable: "Este portón no está disponible. Contacta al administrador.",
   };
   const last = await env.DB.prepare(

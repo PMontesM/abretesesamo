@@ -23,6 +23,12 @@ export function buildingAdmin(resident, pass) {
     tab: "inicio",
     users: [],
     userQuery: "",
+    userGate: "",
+    permittedUserGates(u) {
+      return this.doors.filter(
+        (g) => u.role === "master" || u.gateIds.includes(g.id),
+      );
+    },
     codeQuery: "",
     codeOwner: "",
     codeGate: "",
@@ -31,6 +37,10 @@ export function buildingAdmin(resident, pass) {
     codeMore: false,
     codeBusy: false,
     listedPasses: [],
+    showPassOwner: true,
+    get displayedPasses() {
+      return this.listedPasses;
+    },
     codeRevision: 0,
 
     userModal: null,
@@ -202,7 +212,12 @@ export function buildingAdmin(resident, pass) {
 
     get filteredUsers() {
       const q = this.userQuery.toLowerCase().trim();
-      return this.users.filter((u) => u.username.toLowerCase().includes(q));
+      return this.users.filter(
+        (u) =>
+          [u.username, u.phone || ""].join(" ").toLowerCase().includes(q) &&
+          (!this.userGate ||
+            this.permittedUserGates(u).some((g) => g.id === this.userGate)),
+      );
     },
 
     userAccess(u) {
@@ -408,14 +423,6 @@ export function buildingAdmin(resident, pass) {
       );
     },
 
-    canShare(p) {
-      return (
-        !p.codeMasked &&
-        p.status === "active" &&
-        (!p.expiresAt || p.expiresAt > this.now)
-      );
-    },
-
     canExtend(p) {
       return (
         this.canShare(p) &&
@@ -424,10 +431,6 @@ export function buildingAdmin(resident, pass) {
         !p.single &&
         p.expiresAt + 1800000 <= p.createdAt + 604800000
       );
-    },
-
-    canRevoke(p) {
-      return ["active", "pending", "uncertain"].includes(p.status);
     },
 
     async check(d) {

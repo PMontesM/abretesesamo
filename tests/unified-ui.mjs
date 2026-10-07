@@ -340,8 +340,16 @@ try {
     .getByRole("button", { name: "Usuarios", exact: true })
     .click();
   const recoveryCard = page
-    .locator(".management-card")
+    .locator(".user-row")
     .filter({ has: page.getByText("vecino", { exact: true }) });
+  await recoveryCard.waitFor();
+  await page.getByLabel("Buscar usuario", { exact: true }).fill("vecino");
+  assert.equal(await page.locator(".user-row:visible").count(), 1);
+  await page.getByLabel("Buscar usuario", { exact: true }).fill("");
+  await page.screenshot({
+    path: resolve(output, "shared-super-users-mobile.png"),
+  });
+  await recoveryCard.locator("summary").click();
   await recoveryCard
     .getByRole("button", { name: "Recuperar acceso", exact: true })
     .click();
@@ -423,9 +431,14 @@ try {
     .get().code;
   await context.clearCookies();
   await page.goto("https://app.test/visit");
-  await page.getByLabel("Código de seis dígitos").fill(code);
+  await page.getByLabel("Código de seis dígitos").fill(code.slice(0, 3) + " " + code.slice(3));
+  assert.equal(await page.getByLabel("Código de seis dígitos").inputValue(), code);
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.waitForURL("**/t/edificio-nuevo");
+  await page.waitForTimeout(500);
+  assert.equal(await page.getByRole("group", { name: "Elige el portón" }).count(), 0);
+  await page.getByLabel("Código de seis dígitos").fill(code.slice(0, 3) + "\u00a0" + code.slice(3));
+  assert.equal(await page.getByLabel("Código de seis dígitos").inputValue(), code);
   await page
     .getByRole("button", { name: "Enviar orden de apertura", exact: true })
     .click();

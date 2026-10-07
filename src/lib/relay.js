@@ -1,3 +1,5 @@
+import { COMMAND_TTL_SECONDS, relayReleaseSQL } from "./access-policy.js";
+import { recoverAccess, RECOVERY_PAUSE_MS } from "./access-recovery.js";
 import { MQTTClient } from "./mqtt.js";
 import { InputError } from "./security.js";
 import {
@@ -123,6 +125,7 @@ export async function relayStatus(env, gate, connect = MQTTClient.connect) {
   const id = device(gate);
   let reader, writer, saved, data;
   const checkedAt = Date.now();
+  await recoverAccess(env, gate.tenant_id);
   try {
     saved = await credentials(env);
     reader = await connect(...account(saved));
@@ -182,6 +185,7 @@ export async function relayOpen(
   gate,
   sourceId,
   connect = MQTTClient.connect,
+  sourceDeadline = Date.now() + RECOVERY_PAUSE_MS,
 ) {
   const id = device(gate),
     saved = await credentials(env),
@@ -194,6 +198,11 @@ export async function relayOpen(
     reserved = false,
     safeReject = false;
   try {
+    await recoverAccess(env, gate.tenant_id);
+    if (!Number.isFinite(sourceDeadline) || Date.now() >= sourceDeadline)
+      throw new RelayError(
+        "La solicitud venció antes del envío. Inicia una nueva apertura.",
+      );
     // A durable device lock is shared by visitor codes and resident actions.
     const acquired = await env.DB.batch([
       env.DB.prepare(
@@ -215,7 +224,7 @@ export async function relayOpen(
     ]);
     if (!acquired[1].meta.changes)
       throw new RelayError(
-        "Hay una orden en curso, un tiempo de espera o una revisión pendiente para este relé",
+        "Hay una orden en curso o una pausa de protección. Espera unos dos minutos antes de solicitar otra apertura",
       );
     reserved = true;
     reader = await connect(...readCreds);
@@ -245,13 +254,27 @@ export async function relayOpen(
         action: "OPEN",
         boot_id: data.info.boot_id,
         issued_at: issued,
-        expires_at: issued + 10,
+        expires_at: issued + COMMAND_TTL_SECONDS,
       };
-    await env.DB.prepare(
-      "UPDATE relay_commands SET boot_id=?,expires_at=? WHERE id=?",
+    const armed = await env.DB.prepare(
+      "UPDATE relay_commands SET boot_id=?,expires_at=?,release_at=? WHERE id=? AND status='pending' AND created_at>?",
     )
-      .bind(command.boot_id, command.expires_at, commandId)
+      .bind(
+        command.boot_id,
+        command.expires_at,
+        command.expires_at * 1000 + RECOVERY_PAUSE_MS,
+        commandId,
+        Date.now() - RECOVERY_PAUSE_MS,
+      )
       .run();
+    if (
+      !armed.meta.changes ||
+      Date.now() >= sourceDeadline ||
+      Date.now() >= command.expires_at * 1000
+    )
+      throw new RelayError(
+        "La solicitud venció antes del envío. Inicia una nueva apertura.",
+      );
     // Set before send: a transport exception cannot prove that nothing was transmitted.
     published = true;
     writer.publish("gate/" + id + "/cmd", JSON.stringify(command));
@@ -299,7 +322,7 @@ export async function relayOpen(
           .run();
       } catch {
         throw new RelayError(
-          "No se pudo guardar el resultado; solicita revisión del relé",
+          "No se pudo guardar el resultado. Espera unos dos minutos antes de una nueva apertura",
           true,
         );
       }
@@ -317,9 +340,10 @@ export async function relayOpen(
   }
 }
 export async function pendingRelays(env, tenantId) {
+  await recoverAccess(env, tenantId);
   return (
     await env.DB.prepare(
-      "SELECT r.*,g.name AS gate_name FROM relay_commands r JOIN gates g ON g.id=r.gate_id WHERE r.tenant_id=? AND r.status IN ('pending','uncertain') ORDER BY r.created_at",
+      "SELECT r.*,g.name AS gate_name FROM relay_commands r JOIN gates g ON g.id=r.gate_id WHERE r.tenant_id=? AND r.status IN ('pending','uncertain','unconfirmed') ORDER BY r.created_at",
     )
       .bind(tenantId)
       .all()
@@ -328,8 +352,8 @@ export async function pendingRelays(env, tenantId) {
 export async function resolveRelay(env, tenantId, id, actor) {
   const result = await env.DB.batch([
     env.DB.prepare(
-      "UPDATE relay_commands SET status='closed' WHERE tenant_id=? AND id=? AND status IN ('pending','uncertain') AND created_at<?",
-    ).bind(tenantId, id, Date.now() - 120000),
+      `UPDATE relay_commands SET status='closed' WHERE tenant_id=? AND id=? AND status IN ('pending','uncertain','unconfirmed') AND created_at<? AND ${relayReleaseSQL()}<=?`,
+    ).bind(tenantId, id, Date.now() - RECOVERY_PAUSE_MS, Date.now()),
     env.DB.prepare(
       "INSERT INTO platform_audit_log(id,admin_username,action,details,at) SELECT ?,?,'resolve_relay',?,? WHERE changes()>0",
     ).bind(

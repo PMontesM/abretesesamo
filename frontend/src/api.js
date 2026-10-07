@@ -1,3 +1,4 @@
+import { sendOpening } from "./opening-request.js";
 import { requestJSON } from "./request.js";
 export const config = JSON.parse(
   document.getElementById("app-config").textContent,
@@ -6,21 +7,13 @@ export const base =
   config.mode === "platform" ? "" : "/t/" + config.tenant.slug;
 export const api = (path, body) =>
   requestJSON(base + path, body, { redirectOnUnauthorized: true });
-export async function openGate(id) {
-  const key = "gate-order:" + config.tenant.id + ":" + id;
-  let requestId = sessionStorage.getItem(key);
-  if (!requestId) {
-    requestId = crypto.randomUUID();
-    sessionStorage.setItem(key, requestId);
-  }
-  try {
-    const d = await api("/admin/open-gate", { gateId: id, requestId });
-    sessionStorage.removeItem(key);
-    return d;
-  } catch (error) {
-    if (error.operationClosed) sessionStorage.removeItem(key);
-    throw error;
-  }
+export function openGate(id) {
+  return sendOpening({
+    gateId: id,
+    tenantId: config.tenant.id,
+    storage: sessionStorage,
+    request: api,
+  });
 }
 export function csvDownload(rows) {
   const cell = (v) =>

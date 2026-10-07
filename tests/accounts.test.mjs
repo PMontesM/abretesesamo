@@ -156,3 +156,114 @@ test("global superadmin does not inherit tenant access; sensitive operations use
     s.sqlite.close();
   }
 });
+
+test("renewable account sessions expire after inactivity and cannot revive revoked sessions", async (t) => {
+  const s = await setup();
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    let response = await s.req("/account/login", {
+      phone: "+12025550101",
+      secret: "global-password",
+    });
+    assert.match(response.headers.get("Set-Cookie"), /Max-Age=2592000/);
+    s.setCookie(response);
+    t.mock.timers.tick(29 * 86400000);
+    response = await s.req("/account/renew", {});
+    assert.equal(response.status, 200);
+    s.setCookie(response);
+    t.mock.timers.tick(2 * 86400000);
+    assert.equal((await s.req("/account/buildings")).status, 200);
+    assert.equal(
+      (await (await s.req("/account/buildings")).json()).linked,
+      true,
+    );
+    await s.req("/account/logout", {});
+    assert.equal((await s.req("/account/renew", {})).status, 401);
+    response = await s.req("/account/login", {
+      phone: "+12025550101",
+      secret: "global-password",
+    });
+    s.setCookie(response);
+    t.mock.timers.tick(30 * 86400000 + 1);
+    assert.equal((await s.req("/account/renew", {})).status, 401);
+  } finally {
+    t.mock.timers.reset();
+    s.sqlite.close();
+  }
+});
+test("superadministration cookies retain a fixed one hour lifetime", async (t) => {
+  const { accountCookie, accountSession } = await import(
+    "../src/lib/account-session.js"
+  );
+  const s = await setup();
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    const a = s.sqlite
+      .prepare("SELECT * FROM accounts WHERE phone=?")
+      .get("+12025550101");
+    const secret = await hashSecret("test-password");
+    s.sqlite
+      .prepare(
+        "INSERT INTO platform_admins(id,username,secret,created_at) VALUES(?,?,?,?)",
+      )
+      .run("pwa-admin", "pwa-admin", secret, Date.now());
+    s.sqlite
+      .prepare("INSERT INTO account_platform(account_id,admin_id) VALUES(?,?)")
+      .run(a.id, "pwa-admin");
+    const cookie = await accountCookie(s.env, a);
+    assert.match(cookie, /Max-Age=3600/);
+    const req = new Request("https://app.test", {
+      headers: { Cookie: cookie.split(";")[0] },
+    });
+    assert.ok(await accountSession(req, s.env));
+    const response = await s.req("/account/renew", {}, cookie.split(";")[0]);
+    assert.equal(response.headers.get("Set-Cookie"), null);
+    t.mock.timers.tick(3600001);
+    assert.equal(await accountSession(req, s.env), null);
+  } finally {
+    t.mock.timers.reset();
+    s.sqlite.close();
+  }
+});
+
+test("resident sessions have no server expiry, remain revocable and cannot elevate roles", async (t) => {
+  const s = await setup();
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    const a = s.sqlite
+      .prepare("SELECT id FROM accounts WHERE phone=?")
+      .get("+12025550101");
+    s.sqlite
+      .prepare(
+        "UPDATE users SET role='user' WHERE id IN (SELECT user_id FROM account_memberships WHERE account_id=?)",
+      )
+      .run(a.id);
+    let response = await s.req("/account/login", {
+      phone: "+12025550101",
+      secret: "global-password",
+    });
+    assert.match(response.headers.get("Set-Cookie"), /Max-Age=34560000/);
+    s.setCookie(response);
+    t.mock.timers.tick(500 * 86400000);
+    assert.equal(
+      (await (await s.req("/account/buildings")).json()).linked,
+      true,
+    );
+    s.sqlite
+      .prepare(
+        "UPDATE users SET role='master' WHERE id IN (SELECT user_id FROM account_memberships WHERE account_id=?)",
+      )
+      .run(a.id);
+    assert.equal((await s.req("/account/renew", {})).status, 401);
+    s.sqlite
+      .prepare(
+        "UPDATE users SET role='user' WHERE id IN (SELECT user_id FROM account_memberships WHERE account_id=?)",
+      )
+      .run(a.id);
+    await s.req("/account/logout", {});
+    assert.equal((await s.req("/account/renew", {})).status, 401);
+  } finally {
+    t.mock.timers.reset();
+    s.sqlite.close();
+  }
+});

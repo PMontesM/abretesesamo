@@ -1,0 +1,81 @@
+<div class="compact-list">
+  <template x-for="p in displayedPasses" :key="p.id">
+    <article class="compact-row">
+      <details>
+        <summary class="compact-summary">
+          <span class="compact-main"
+            ><strong
+              class="code compact-code"
+              x-text="grouped(p.code)"
+            ></strong>
+            <h3 class="compact-name" x-text="p.name"></h3>
+            <span class="compact-meta"
+              ><span class="gate-label" x-text="accessLabel(p)"></span
+              ><span x-text="p.type"></span></span
+          ></span>
+          <span class="compact-state"
+            ><span
+              class="state-label"
+              :class="p.status === 'uncertain' || p.status === 'pending' ? 'state-warning' : p.status !== 'active' || (p.expiresAt && p.expiresAt <= now) ? 'state-muted' : expiring(p) ? 'state-warning' : 'state-active'"
+              x-text="passStatus(p)"
+            ></span
+            ><span
+              class="compact-expiry"
+              x-text="!p.expiresAt ? 'Sin vencimiento' : p.expiresAt <= now ? 'Vencido' : 'Vence en ' + leftText(p)"
+            ></span
+            ><span class="detail-toggle"
+              >Ver detalles <span aria-hidden="true">⌄</span></span
+            ></span
+          >
+        </summary>
+        <div class="compact-detail">
+          <p x-text="expiryText(p)"></p>
+          <p x-show="showPassOwner">
+            Creado por <span x-text="p.owner"></span>
+          </p>
+          <div class="compact-actions">
+            <button
+              x-show="!p.codeMasked"
+              @click="copy(p)"
+              class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
+              aria-label="Copiar código"
+            >
+              <i class="fa-regular fa-copy" aria-hidden="true"></i>Copiar
+            </button>
+
+            <button
+              x-show="canExtend(p)"
+              x-cloak
+              @click="extend(p)"
+              class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
+              aria-label="Extender 30 minutos"
+            >
+              <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i
+              >+30 min
+            </button>
+            <button
+              x-show="canRevoke(p)"
+              @click="confirmRevoke(p)"
+              class="py-2.5 text-xs font-medium flex flex-col items-center gap-1"
+              :class="armed === 'r' + p.id ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'"
+            >
+              <i class="fa-solid fa-ban" aria-hidden="true"></i
+              ><span
+                x-text="armed === 'r' + p.id ? '¿Seguro?' : 'Revocar'"
+              ></span>
+            </button>
+          </div>
+        </div>
+      </details>
+      <div class="compact-share" x-show="canShare(p)">
+        <button
+          @click="share(p)"
+          class="mini-action"
+          aria-label="Compartir pase"
+        >
+          Compartir
+        </button>
+      </div>
+    </article>
+  </template>
+</div>

@@ -2,7 +2,7 @@ import { templates, assets } from "./templates.js";
 import { scriptJSON, escapeHTML } from "../lib/security.js";
 export function application(config) {
   return (
-    '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>' +
+    '<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#344767"><link rel="apple-touch-icon" href="/icons/app-192.png"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>' +
     escapeHTML(config.tenant?.name || "Super administración") +
     ' · PortonSmart</title><link rel="stylesheet" href="' +
     assets.style +

@@ -1,3 +1,7 @@
+import {
+  managementUserRow,
+  managementCodeRow,
+} from "./shared-management-rows.js";
 import { requestJSON } from "./request.js";
 // Shared browser UI. All database content uses textContent; each action captures its own building ID.
 export function mountManagement(root, config, options = {}) {
@@ -35,7 +39,8 @@ export function mountManagement(root, config, options = {}) {
     revoked: "Revocado",
     expired: "Vencido",
     pending: "En curso / revisión",
-    uncertain: "Requiere revisión",
+    uncertain: "Sin confirmación · en pausa",
+    unconfirmed: "Sin confirmación · acceso liberado",
     used: "Utilizado",
     sent: "Orden enviada",
     not_sent: "No enviada",
@@ -134,9 +139,18 @@ export function mountManagement(root, config, options = {}) {
     return s;
   }
   function table(parent, headers, rows) {
-    const grid = el("div", undefined, "management-grid");
+    const compact = ["Usuario", "Código"].includes(headers[0]);
+    const grid = el(
+      "div",
+      undefined,
+      compact ? "compact-list" : "management-grid",
+    );
     if (!rows.length) grid.append(el("p", "No hay registros.", "empty-state"));
     for (const values of rows) {
+      if (values instanceof Node) {
+        grid.append(values);
+        continue;
+      }
       const card = el("article", undefined, "management-card");
       values.forEach((v, i) => {
         const field = el("div", undefined, "management-value");
@@ -485,7 +499,7 @@ export function mountManagement(root, config, options = {}) {
               ),
             );
           }
-          return [
+          const values = [
             el("code", c.code),
             c.label,
             c.gate_name || "Portón no disponible",
@@ -501,6 +515,7 @@ export function mountManagement(root, config, options = {}) {
             status(c),
             actions(...buttons),
           ];
+          return managementCodeRow(c, values, [...values[7].children]);
         }),
       );
     }
@@ -561,13 +576,23 @@ export function mountManagement(root, config, options = {}) {
     ]);
     const refresh = () => building(tenant);
     const search = input(s, "Buscar usuario", "search", "", false);
-    search.placeholder = "Escribe el nombre de usuario";
-    search.addEventListener("input", () => {
-      for (const row of s.querySelectorAll(".management-card"))
-        row.hidden = !row.firstElementChild.textContent
-          .toLowerCase()
-          .includes(search.value.trim().toLowerCase());
-    });
+    search.placeholder = "Nombre o teléfono";
+    const gateFilter = select(
+      s,
+      "Filtrar por portón",
+      [["", "Todos los portones"], ...gates.map((g) => [g.id, g.name])],
+      "",
+    );
+    gateFilter.required = false;
+    const filterUsers = () => {
+      for (const row of s.querySelectorAll(".user-row"))
+        row.hidden =
+          !row.dataset.search.includes(search.value.trim().toLowerCase()) ||
+          (!!gateFilter.value &&
+            !JSON.parse(row.dataset.gates).includes(gateFilter.value));
+    };
+    search.addEventListener("input", filterUsers);
+    gateFilter.addEventListener("change", filterUsers);
     s.append(
       button("Agregar usuario", () =>
         dialog(
@@ -714,19 +739,11 @@ export function mountManagement(root, config, options = {}) {
             ),
           );
         }
-        return [
-          u.username,
-          u.role === "master" ? "Administrador" : "Usuario",
-          u.role === "master"
-            ? "Todos los portones activos"
-            : gates
-                .filter((g) => u.gateIds.includes(g.id))
-                .map(
-                  (g) => g.name + (g.status !== "active" ? " (inactivo)" : ""),
-                )
-                .join(", ") || "Sin acceso",
-          actions(...buttons),
-        ];
+        return managementUserRow(
+          u,
+          gates.filter((g) => u.role === "master" || u.gateIds.includes(g.id)),
+          buttons,
+        );
       }),
     );
     return s;
@@ -1307,7 +1324,7 @@ export function mountManagement(root, config, options = {}) {
         relaySection.append(
           el(
             "p",
-            "Comprueba lo ocurrido en el lugar antes de liberar una orden sin confirmar. Después revisa también el código o la orden del panel correspondiente.",
+            "Las órdenes MQTT sin confirmación dejan de bloquear automáticamente después de la pausa de protección. La alerta permanece hasta que la marques como revisada; no se reenvían órdenes.",
           ),
         );
         table(
@@ -1318,11 +1335,11 @@ export function mountManagement(root, config, options = {}) {
             date(c.created_at),
             states[c.status],
             button(
-              "Liberar después de revisar",
+              "Marcar como revisada",
               async () => {
                 if (
                   !(await ask(
-                    "¿Ya comprobaste lo ocurrido? Esto permite nuevas órdenes al relé y no lo activa.",
+                    "¿Marcar esta alerta como revisada? No se enviará ninguna orden ni se acortará la pausa de protección.",
                   ))
                 )
                   return;
@@ -1355,7 +1372,7 @@ export function mountManagement(root, config, options = {}) {
           button("Cerrar revisión", async () => {
             if (
               !(await ask(
-                "Comprueba físicamente el portón. Cerrar esta revisión permitirá nuevas órdenes y no enviará ninguna.",
+                "¿Cerrar esta revisión? No se enviará ninguna orden. Los relés MQTT se recuperan automáticamente después de la pausa de protección.",
               ))
             )
               return;

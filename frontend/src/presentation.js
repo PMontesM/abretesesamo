@@ -58,7 +58,7 @@ export function portonApp() {
       return d.state === "error"
         ? "border-red-300 bg-red-50"
         : ["reposo", "sosteniendo"].includes(d.state)
-          ? "border-gray-300 bg-white hover:bg-gray-50"
+          ? "border-blue-400 bg-blue-100 shadow-md hover:bg-blue-200 active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           : "border-transparent bg-white";
     },
     textClass(d) {
@@ -68,7 +68,7 @@ export function portonApp() {
       return d.state === "abierto" ? "bg-green-600" : "bg-material-dark";
     },
     grouped(code) {
-      return code.includes("•") ? code : code.slice(0, 3) + " " + code.slice(3);
+      return code;
     },
     get visibleActivity() {
       return this.filter === "rechazados"

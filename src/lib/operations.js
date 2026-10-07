@@ -1,6 +1,12 @@
+import {
+  RECOVERY_PAUSE_MS,
+  REQUEST_MAX_AGE_MS,
+  REQUEST_FUTURE_SKEW_MS,
+} from "./access-policy.js";
+import { recoverAccess } from "./access-recovery.js";
 import { InputError } from "./security.js";
 import { auditStatements } from "./db.js";
-export async function reserve(env, user, gate, id) {
+export async function findOperation(env, user, gate, id) {
   if (typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id))
     throw new InputError(
       "Actualiza la página para iniciar una orden identificada",
@@ -17,13 +23,34 @@ export async function reserve(env, user, gate, id) {
       existing.gate_id !== gate.id
     )
       throw new InputError("Identificador de orden no disponible");
-    return { ...existing, replay: true };
+    return existing;
   }
+  return null;
+}
+export function validRequestTime(requestedAt) {
+  return (
+    Number.isSafeInteger(requestedAt) &&
+    requestedAt <= Date.now() + REQUEST_FUTURE_SKEW_MS &&
+    requestedAt >= Date.now() - REQUEST_MAX_AGE_MS
+  );
+}
+export async function reserve(env, user, gate, id, requestedAt) {
+  await recoverAccess(env, user.tenant_id);
+  const existing = await findOperation(env, user, gate, id);
+  if (existing) return { ...existing, replay: true };
+  if (!validRequestTime(requestedAt)) {
+    const error = new InputError(
+      "La solicitud guardada venció. Vuelve a pulsar Abrir para iniciar una nueva.",
+    );
+    error.operationClosed = true;
+    throw error;
+  }
+  const createdAt = Date.now();
   // Atomic unique gate lock and durable intent before any external request.
   const r = await env.DB.batch([
     env.DB.prepare(
       "INSERT INTO direct_operations(id,tenant_id,gate_id,owner_id,gate_name,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING",
-    ).bind(id, user.tenant_id, gate.id, user.id, gate.name, Date.now()),
+    ).bind(id, user.tenant_id, gate.id, user.id, gate.name, createdAt),
     env.DB.prepare(
       "INSERT INTO logs(id,tenant_id,gate_id,gate_name,code,label,owner,owner_id,at,outcome) SELECT ?,?,?,?,'DIRECTO','Acceso panel',?,?,?,'pending' WHERE changes()>0",
     ).bind(
@@ -44,10 +71,16 @@ export async function reserve(env, user, gate, id) {
       .first();
     if (row) return { ...row, replay: true };
     throw new InputError(
-      "Hay una orden pendiente en este portón. Solicita revisión al administrador de plataforma.",
+      "Hay una orden pendiente en este portón. Si usa un relé MQTT, espera unos dos minutos antes de una nueva apertura.",
     );
   }
-  return { id, status: "pending", gate_name: gate.name, replay: false };
+  return {
+    id,
+    status: "pending",
+    gate_name: gate.name,
+    created_at: createdAt,
+    replay: false,
+  };
 }
 export async function finish(env, id, outcome) {
   await env.DB.batch([
@@ -60,9 +93,10 @@ export async function finish(env, id, outcome) {
   ]);
 }
 export async function list(env, tenantId) {
+  await recoverAccess(env, tenantId);
   return (
     await env.DB.prepare(
-      "SELECT * FROM direct_operations WHERE tenant_id=? AND status IN ('pending','uncertain') ORDER BY created_at",
+      "SELECT * FROM direct_operations WHERE tenant_id=? AND status IN ('pending','uncertain','unconfirmed') ORDER BY created_at",
     )
       .bind(tenantId)
       .all()
@@ -71,8 +105,8 @@ export async function list(env, tenantId) {
 export async function resolve(env, tenantId, id, actor) {
   const r = await env.DB.batch([
     env.DB.prepare(
-      "UPDATE direct_operations SET status='closed' WHERE tenant_id=? AND id=? AND (status='uncertain' OR (status='pending' AND created_at<?))",
-    ).bind(tenantId, id, Date.now() - 120000),
+      "UPDATE direct_operations SET status='closed' WHERE tenant_id=? AND id=? AND (status IN ('uncertain','unconfirmed') OR (status='pending' AND created_at<?))",
+    ).bind(tenantId, id, Date.now() - RECOVERY_PAUSE_MS),
     ...auditStatements(
       env,
       actor,

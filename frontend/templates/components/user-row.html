@@ -1,0 +1,51 @@
+<article class="compact-row user-row">
+  <details>
+    <summary class="compact-summary user-summary">
+      <span
+        class="user-avatar"
+        aria-hidden="true"
+        x-text="u.username.slice(0,2).toUpperCase()"
+      ></span>
+      <span class="compact-main">
+        <h3 class="compact-name user-name" x-text="u.username"></h3>
+        <span class="user-gates compact-meta">
+          <span class="gate-label user-role" x-show="u.role === 'master'"
+            >Administrador</span
+          >
+          <template x-for="g in permittedUserGates(u)" :key="g.id"
+            ><span class="gate-label" x-text="g.name"></span
+          ></template>
+          <span
+            class="user-no-gates"
+            x-show="permittedUserGates(u).length === 0"
+            >Sin accesos asignados</span
+          >
+        </span>
+      </span>
+      <span class="user-more"
+        ><span aria-hidden="true">•••</span
+        ><span class="detail-toggle">Opciones</span></span
+      >
+    </summary>
+    <div class="compact-detail">
+      <p class="user-phone" x-text="u.phone || 'Sin teléfono asociado'"></p>
+      <div class="compact-actions">
+        <button @click="showWelcome(u)" class="mini-action">Compartir</button>
+        <button
+          x-show="u.role !== 'master'"
+          @click="editUser('permissions',u)"
+          class="mini-action"
+        >
+          Accesos permitidos
+        </button>
+        <button
+          x-show="u.role !== 'master'"
+          @click="confirmDelete(u)"
+          class="mini-action text-red-700"
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </details>
+</article>

@@ -325,7 +325,9 @@ test("MQTT: solicitudes simultáneas comparten bloqueo, revisión requiere esper
     assert.equal(b.sent.length, 1);
     const id = s.sqlite.prepare("SELECT id FROM relay_commands").get().id;
     await assert.rejects(resolveRelay(s.env, "t", id, actor));
-    s.sqlite.exec("UPDATE relay_commands SET created_at=1");
+    s.sqlite.exec(
+      "UPDATE relay_commands SET created_at=1,expires_at=1,release_at=1",
+    );
     await resolveRelay(s.env, "t", id, actor);
     assert.equal(
       s.sqlite.prepare("SELECT status FROM relay_commands").get().status,
@@ -423,7 +425,7 @@ test("MQTT: falta de configuración devuelve código activo sin iniciar visita y
       cookie = (await createSessionCookie(s.env, user)).split(";")[0];
     const direct = await req(
       "/t/test/admin/open-gate",
-      { gateId: "g", requestId: crypto.randomUUID() },
+      { gateId: "g", requestId: crypto.randomUUID(), requestedAt: Date.now() },
       cookie,
     );
     assert.equal(direct.status, 409);
@@ -550,4 +552,64 @@ test("MQTT: solo protocolo 3; rechaza 2 antes de publicar e ignora confirmacione
     (e) => e.uncertain === true,
   );
   assert.equal(wrong.sent.length, 1);
+});
+
+test("MQTT: after an uncertain command a new explicit request works; recovery never publishes", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const s = await setup(),
+    first = broker({ acks: [] });
+  try {
+    await assert.rejects(
+      relayOpen(s.env, s.gate, "first", first.connect),
+      (e) => e.uncertain,
+    );
+    const pause = s.sqlite
+      .prepare("SELECT release_at FROM relay_commands")
+      .get().release_at;
+    const early = broker();
+    await assert.rejects(relayOpen(s.env, s.gate, "early", early.connect));
+    assert.equal(early.sent.length, 0);
+    t.mock.timers.setTime(pause);
+    const status = broker();
+    assert.equal(
+      (await relayStatus(s.env, s.gate, status.connect)).ready,
+      true,
+    );
+    assert.equal(status.sent.length, 0);
+    const next = broker();
+    await relayOpen(s.env, s.gate, "second", next.connect);
+    assert.equal(next.sent.length, 1);
+    assert.notEqual(next.sent[0].id, first.sent[0].id);
+    assert.equal(
+      s.sqlite
+        .prepare(
+          "SELECT COUNT(*) n FROM relay_commands WHERE status='unconfirmed'",
+        )
+        .get().n,
+      1,
+    );
+  } finally {
+    s.sqlite.close();
+  }
+});
+
+test("MQTT: a suspended request cannot publish after its reservation expires", async (t) => {
+  const now = Date.now();
+  t.mock.timers.enable({ apis: ["Date"], now });
+  const s = await setup(),
+    stalled = broker({ hold: true });
+  try {
+    const promise = relayOpen(s.env, s.gate, "stalled", stalled.connect);
+    promise.catch(() => {});
+    while (!stalled.clients.length) await new Promise((r) => setTimeout(r, 1));
+    t.mock.timers.setTime(now + 121000);
+    const next = broker();
+    await relayOpen(s.env, s.gate, "next", next.connect);
+    stalled.release();
+    await assert.rejects(promise, (e) => !e.uncertain);
+    assert.equal(stalled.sent.length, 0);
+    assert.equal(next.sent.length, 1);
+  } finally {
+    s.sqlite.close();
+  }
 });

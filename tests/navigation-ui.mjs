@@ -176,7 +176,11 @@ try {
     await page.goto("https://app.test/login");
     await page
       .getByLabel("Teléfono", { exact: true })
-      .fill({ admin: "+12025550100", pablo: "+12025550101" }[username]);
+      .fill(
+        { admin: "+12025550100", pablo: "+12025550101", super: "+12025550102" }[
+          username
+        ],
+      );
     await page.getByLabel("Contraseña", { exact: true }).fill("password-test");
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await page.waitForURL("**/admin");
@@ -200,10 +204,71 @@ try {
     );
   }
 
+  async function auditSidebar(role) {
+    for (const [width, height] of [
+      [320, 480],
+      [390, 664],
+      [844, 390],
+      [1440, 900],
+    ]) {
+      await page.setViewportSize({ width, height });
+      if (width < 768)
+        await page
+          .getByRole("button", {
+            name: role === "pablo" ? "Más" : "Abrir menú",
+            exact: true,
+          })
+          .click();
+      const sidebar = page.locator("aside.app-sidebar");
+      const exit = sidebar.getByRole("button", {
+        name: "Cerrar sesión",
+        exact: true,
+      });
+      await exit.click({ trial: true });
+      const box = await exit.boundingBox();
+      assert.ok(
+        box && box.y >= 0 && box.y + box.height <= height,
+        role + " logout fits viewport",
+      );
+      const controls = sidebar.locator(
+        "a:visible,button:visible,select:visible",
+      );
+      for (let i = 0; i < (await controls.count()); i++)
+        await controls.nth(i).click({ trial: true });
+      if (width === 390)
+        await page.screenshot({
+          path: resolve(output, "sidebar-" + role + "-mobile.png"),
+        });
+      if (width < 768) await page.keyboard.press("Escape");
+    }
+    await page.setViewportSize({ width: 390, height: 664 });
+    await page
+      .getByRole("button", {
+        name: role === "pablo" ? "Más" : "Abrir menú",
+        exact: true,
+      })
+      .click();
+    await page
+      .locator("aside")
+      .getByRole("button", { name: "Cerrar sesión", exact: true })
+      .click();
+    await page.waitForURL("**/login");
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await login(role);
+  }
   await login("pablo");
+  await auditSidebar("pablo");
   await visible("accesos");
   await page.getByRole("link", { name: "Mi perfil", exact: true }).click();
   await visible("profile");
+  await page
+    .getByRole("button", { name: "Instalar en mi celular", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Entendido" })
+    .click();
+
   await page.getByText("+12025550101", { exact: true }).waitFor();
   assert.ok(page.url().includes("/t/aurora/admin"));
   await page.getByLabel("Nuevo teléfono", { exact: true }).fill("+12025550109");
@@ -258,10 +323,14 @@ try {
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login("admin");
+  await auditSidebar("admin");
   await visible("inicio");
   await page.getByRole("link", { name: "Mi perfil", exact: true }).click();
   await visible("profile");
-  await page.getByText("+12025550100", { exact: true }).waitFor();
+  await page
+    .locator("[data-panel-page=profile]")
+    .getByText("+12025550100", { exact: true })
+    .waitFor();
   await page.goBack();
   await visible("inicio");
 
@@ -291,6 +360,7 @@ try {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.waitForURL("**/platform/admin");
   await visible("resumen");
+  await auditSidebar("super");
   await page.setViewportSize({ width: 1440, height: 1000 });
 
   for (const id of [

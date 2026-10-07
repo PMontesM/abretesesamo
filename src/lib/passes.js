@@ -1,3 +1,4 @@
+import { recoverAccess } from "./access-recovery.js";
 import { allowedGates, listCodes } from "./db.js";
 import { InputError, required } from "./security.js";
 import { takeAttempt } from "./ratelimit.js";
@@ -148,6 +149,7 @@ export async function extendPass(env, user, body) {
     );
 }
 export async function visitorGates(env, tenantId, code) {
+  await recoverAccess(env, tenantId);
   const row = await env.DB.prepare(
     "SELECT * FROM codes WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)",
   )

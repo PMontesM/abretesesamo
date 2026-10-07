@@ -26,13 +26,37 @@ export const accountCookiePresent = (request) =>
     .some((p) => p.trim().startsWith("account_session="));
 export const clearAccountCookie = () =>
   "account_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0";
+async function sessionPolicy(env, accountId) {
+  const platform = await env.DB.prepare(
+    "SELECT 1 FROM account_platform WHERE account_id=?",
+  )
+    .bind(accountId)
+    .first();
+  if (platform) return "platform";
+  const roles = await env.DB.prepare(
+    "SELECT u.role FROM account_memberships m JOIN users u ON u.id=m.user_id AND u.tenant_id=m.tenant_id WHERE m.account_id=?",
+  )
+    .bind(accountId)
+    .all();
+  return roles.results.length && roles.results.every((u) => u.role === "user")
+    ? "resident"
+    : "admin";
+}
 export async function accountCookie(env, account) {
+  const policy = await sessionPolicy(env, account.id);
+  const seconds =
+    policy === "platform"
+      ? 3600
+      : policy === "resident"
+        ? 400 * 86400
+        : 30 * 86400;
   const payload = b64(
     enc.encode(
       JSON.stringify({
         id: account.id,
         v: account.session_version,
-        e: Date.now() + 3600000,
+        e: policy === "resident" ? null : Date.now() + seconds * 1000,
+        persistentResident: policy === "resident",
       }),
     ),
   );
@@ -41,7 +65,8 @@ export async function accountCookie(env, account) {
     payload +
     "." +
     (await sign(env, payload)) +
-    "; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=3600"
+    "; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=" +
+    seconds
   );
 }
 export async function accountSession(request, env) {
@@ -72,11 +97,17 @@ export async function accountSession(request, env) {
   } catch {
     return null;
   }
-  if (!Number.isFinite(data.e) || data.e <= Date.now()) return null;
+  const persistent = data.persistentResident === true && data.e === null;
+  if (!persistent && (!Number.isFinite(data.e) || data.e <= Date.now()))
+    return null;
   const a = await env.DB.prepare("SELECT * FROM accounts WHERE id=?")
     .bind(data.id)
     .first();
-  return a && a.session_version === data.v ? a : null;
+  if (!a || a.session_version !== data.v) return null;
+  // A resident's non-expiring session must never acquire elevated privileges.
+  if (persistent && (await sessionPolicy(env, a.id)) !== "resident")
+    return null;
+  return a;
 }
 export async function accountUser(request, env, tenantId, platform = false) {
   const a = await accountSession(request, env);

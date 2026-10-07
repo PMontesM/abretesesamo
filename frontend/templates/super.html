@@ -1,13 +1,13 @@
 <body
   @open-profile.window="goTo('profile')"
-  class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+  class="app-shell bg-material-bg text-material-text flex overflow-hidden font-sans antialiased"
   x-data="superadmin"
   @keydown.escape.window="closePanels()"
 >
   <!-- SIDEBAR (oscuro: señal de que estás en el nivel más alto de permisos) -->
   <aside
     :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-    class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-material-darker flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+    class="app-sidebar sidebar-dark fixed md:relative inset-y-0 left-0 z-40 w-64 bg-material-darker flex flex-col shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
     aria-label="Menú principal"
   >
     <div class="h-20 flex items-center px-6 border-b border-white/10">
@@ -151,17 +151,11 @@
           <i
             class="fa-solid fa-chevron-right text-white/60 text-xs"
             aria-hidden="true"
-          ></i></a
-        ><button
-          class="on-dark text-white/60 hover:text-white mt-3"
-          @click="logout()"
-          aria-label="Cerrar sesión"
-        >
-          <span class="text-xs">Cerrar sesión</span
-          ><i class="fa-solid fa-right-from-bracket text-sm"></i>
-        </button>
+          ></i
+        ></a>
       </div>
     </div>
+    <!-- SIDEBAR_LOGOUT -->
   </aside>
   <div
     x-show="drawer"

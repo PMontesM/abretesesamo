@@ -1,3 +1,8 @@
+import {
+  recoverAccess,
+  recoveryScope,
+  RECOVERY_PAUSE_MS,
+} from "./lib/access-recovery.js";
 import { normalizePhone } from "./lib/account-provision.js";
 import { clearAccountCookie } from "./lib/account-session.js";
 import { Hono } from "hono";
@@ -32,9 +37,14 @@ const html = (body) =>
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 export class TriggerError extends Error {}
-export async function triggerGate(gate, env, sourceId = crypto.randomUUID()) {
+export async function triggerGate(
+  gate,
+  env,
+  sourceId = crypto.randomUUID(),
+  sourceDeadline = Date.now() + RECOVERY_PAUSE_MS,
+) {
   if (gate?.status === "active" && gate.trigger_type === "mqtt")
-    return relayOpen(env, gate, sourceId);
+    return relayOpen(env, gate, sourceId, undefined, sourceDeadline);
   if (gate?.status === "active" && gate.trigger_type === "demo") return;
   if (!gate || gate.status !== "active" || gate.trigger_type !== "webhook")
     throw new TriggerError("Portón no disponible");
@@ -164,6 +174,7 @@ async function route(request, env, ctx) {
     const b = await jsonBody(request);
     if (!/^\d{6}$/.test(b.code || ""))
       throw new InputError("El código debe tener seis dígitos");
+    await recoverAccess(env, tenant.id);
     const candidate = await env.DB.prepare(
       "SELECT visit_mode,visit_started_at FROM codes WHERE tenant_id=? AND code=? AND status='active' AND (expires_at IS NULL OR expires_at>?)",
     )
@@ -192,7 +203,7 @@ async function route(request, env, ctx) {
         ok: true,
         confirmationRequired: true,
         message:
-          "¿Estás frente al portón? Al abrir por primera vez tendrás 10 minutos para volver a abrir. Después, el código dejará de funcionar.",
+          "¿Estás frente al portón? Desde el primer envío tendrás 10 minutos para volver a abrir, incluso si no llega la confirmación. Después, el código dejará de funcionar.",
       });
     const row = await db.claimCode(env, tenant.id, b.code, b.gateId || null);
     if (!row)
@@ -209,7 +220,12 @@ async function route(request, env, ctx) {
     try {
       if (gate?.trigger_config !== row.authorized_config)
         throw new TriggerError("La configuración del portón cambió");
-      await triggerGate(gate, env, row.claim_token);
+      await triggerGate(
+        gate,
+        env,
+        row.claim_token,
+        row.claimed_at + RECOVERY_PAUSE_MS,
+      );
     } catch (error) {
       outcome =
         error instanceof RelayError && !error.uncertain
@@ -237,7 +253,7 @@ async function route(request, env, ctx) {
         {
           ok: false,
           error:
-            "La orden pudo ejecutarse, pero no se pudo guardar el resultado. No reintentes; solicita revisión al administrador.",
+            "La orden pudo ejecutarse, pero no se pudo guardar el resultado. Espera unos dos minutos y consulta el estado; si persiste, contacta al administrador.",
         },
         503,
       );
@@ -259,7 +275,9 @@ async function route(request, env, ctx) {
           error:
             "No se pudo confirmar la orden. " +
             reason +
-            ". El código queda en revisión; contacta al administrador.",
+            (gate?.trigger_type === "mqtt"
+              ? ". Espera unos dos minutos y consulta el estado. No repetiremos la orden automáticamente."
+              : ". El código queda en revisión; contacta al administrador."),
         },
         502,
       );
@@ -374,6 +392,31 @@ async function route(request, env, ctx) {
         connection_checked_at: g.connection_checked_at,
       })),
     });
+  if (rest === "/admin/open-gate/status" && request.method === "POST") {
+    const b = await jsonBody(request),
+      gate = await db.requireGate(env, user, b.gateId);
+    if (!(await takeAttempt(env, `direct-status:${user.id}`, 30)))
+      return json(
+        { ok: false, error: "Demasiadas consultas. Espera cinco minutos." },
+        429,
+      );
+    await recoverAccess(env, user.tenant_id);
+    const previous = await operations.findOperation(
+      env,
+      user,
+      gate,
+      b.requestId,
+    );
+    return json({
+      ok: true,
+      status: previous?.status || "missing",
+      acceptsOriginal: !previous && operations.validRequestTime(b.requestedAt),
+      message:
+        previous?.status === "sent"
+          ? "La orden anterior ya fue confirmada. No se ha vuelto a enviar."
+          : "La orden anterior sigue pendiente. Espera a que termine la pausa antes de solicitar otra apertura.",
+    });
+  }
   if (rest === "/admin/open-gate" && request.method === "POST") {
     const b = await jsonBody(request),
       gate = await db.requireGate(env, user, b.gateId);
@@ -382,7 +425,13 @@ async function route(request, env, ctx) {
         { ok: false, error: "Demasiadas solicitudes. Espera cinco minutos." },
         429,
       );
-    const operation = await operations.reserve(env, user, gate, b.requestId);
+    const operation = await operations.reserve(
+      env,
+      user,
+      gate,
+      b.requestId,
+      b.requestedAt,
+    );
     if (operation.replay)
       return operation.status === "sent"
         ? json({
@@ -394,16 +443,23 @@ async function route(request, env, ctx) {
             {
               ok: false,
               error:
-                "Esta orden está en revisión o ya fue cerrada. No se ha vuelto a enviar.",
+                "La orden anterior no se ha vuelto a enviar. Si terminó la pausa, puedes solicitar una nueva apertura.",
               operationId: operation.id,
-              operationClosed: operation.status === "closed",
+              operationClosed: ["closed", "unconfirmed"].includes(
+                operation.status,
+              ),
             },
             409,
           );
     let outcome = "sent",
       reason = "";
     try {
-      await triggerGate(gate, env, operation.id);
+      await triggerGate(
+        gate,
+        env,
+        operation.id,
+        operation.created_at + RECOVERY_PAUSE_MS,
+      );
     } catch (error) {
       outcome =
         error instanceof RelayError && !error.uncertain
@@ -418,7 +474,7 @@ async function route(request, env, ctx) {
         {
           ok: false,
           error:
-            "La orden pudo ejecutarse. No se pudo guardar el resultado; solicita revisión y no repitas la apertura.",
+            "La orden pudo ejecutarse. No se pudo guardar el resultado; espera unos dos minutos y consulta el estado antes de solicitar otra apertura.",
           operationId: operation.id,
         },
         503,
@@ -444,7 +500,10 @@ async function route(request, env, ctx) {
           {
             ok: false,
             error:
-              "No se confirmó la orden. El portón queda bloqueado para nuevas órdenes del panel hasta que plataforma revise el resultado.",
+              gate.trigger_type === "mqtt"
+                ? "No se confirmó la apertura. Espera unos dos minutos antes de solicitar otra. La incidencia queda registrada; no repetiremos la orden automáticamente."
+                : "No se confirmó la orden. Solicita revisión al administrador antes de repetir la apertura.",
+            operationClosed: gate.trigger_type === "mqtt",
             operationId: operation.id,
           },
           502,
@@ -567,6 +626,9 @@ app.onError((err, c) =>
   c.json(
     {
       ok: false,
+      ...(err instanceof InputError && err.operationClosed === true
+        ? { operationClosed: true }
+        : {}),
       error:
         err instanceof InputError
           ? err.message
@@ -588,7 +650,9 @@ app.all("/t/:slug", (c) => route(c.req.raw, c.env, {}));
 app.all("/t/:slug/*", (c) => route(c.req.raw, c.env, {}));
 app.notFound((c) => c.text("No encontrado", 404));
 export default {
-  fetch: app.fetch,
+  fetch(request, env, ctx) {
+    return app.fetch(request, recoveryScope(env), ctx);
+  },
   async scheduled(event, env, ctx) {
     ctx.waitUntil(db.cleanup(env));
   },

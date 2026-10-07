@@ -1,6 +1,8 @@
+import { recoverAccess } from "./access-recovery.js";
 import * as db from "./db.js";
 import { listPasses } from "./passes.js";
 export async function panelData(env, user, offset = 0) {
+  await recoverAccess(env, user.tenant_id);
   offset = Number(offset);
   if (!Number.isInteger(offset) || Math.abs(offset) > 840) offset = 0;
   const now = Date.now(),

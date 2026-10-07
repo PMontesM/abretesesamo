@@ -64,7 +64,7 @@ accounts.post("/api/visitor-entry", async (c) => {
   if (!/^\d{6}$/.test(b.code || ""))
     throw new InputError("El código debe tener seis dígitos");
   const row = await c.env.DB.prepare(
-    "SELECT t.id,t.slug FROM codes c JOIN tenants t ON t.id=c.tenant_id WHERE c.code=? AND t.status='active' AND c.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)",
+    "SELECT t.id,t.slug FROM codes c JOIN tenants t ON t.id=c.tenant_id WHERE c.code=? AND t.status='active' AND c.status IN ('active','pending','uncertain') AND (c.expires_at IS NULL OR c.expires_at>?)",
   )
     .bind(b.code, Date.now())
     .first();
@@ -113,6 +113,20 @@ accounts.post("/account/login", async (c) => {
       403,
     );
   return c.json({ ok: true, redirect: await destination(c.env, a) }, 200, {
+    "Set-Cookie": await accountCookie(c.env, a),
+  });
+});
+accounts.post("/account/renew", async (c) => {
+  const a = await accountSession(c.req.raw, c.env);
+  if (!a) return c.json({ ok: false, error: "Inicia sesión de nuevo." }, 401);
+  const platform = await c.env.DB.prepare(
+    "SELECT 1 FROM account_platform WHERE account_id=?",
+  )
+    .bind(a.id)
+    .first();
+  c.header("Cache-Control", "no-store");
+  if (platform) return c.json({ ok: true, renewed: false });
+  return c.json({ ok: true, renewed: true }, 200, {
     "Set-Cookie": await accountCookie(c.env, a),
   });
 });

@@ -434,3 +434,312 @@ button:disabled {
     color: white;
   }
 }
+
+/* Compact, touch-friendly lists shared by resident and building administration. */
+.compact-list {
+  border: 1px solid #e3e7ef;
+  background: white;
+}
+.compact-row + .compact-row {
+  border-top: 1px solid #e3e7ef;
+}
+.compact-row:nth-child(odd) {
+  background: #f7f8fb;
+}
+.compact-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.compact-summary::-webkit-details-marker {
+  display: none;
+}
+.compact-summary:focus-visible {
+  outline: 2px solid #344767;
+  outline-offset: -2px;
+}
+.compact-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.compact-code {
+  font-size: 20px;
+  line-height: 1.2;
+  color: #344767;
+}
+.compact-name {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  color: #344767;
+}
+.compact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+.gate-label {
+  background: #edf0f6;
+  color: #405473;
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+}
+.compact-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 0 0 auto;
+  max-width: 45%;
+  text-align: right;
+}
+.state-label {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 7px;
+}
+.state-active {
+  background: #e6f4eb;
+  color: #256340;
+}
+.state-warning {
+  background: #fcf1d9;
+  color: #875e0b;
+}
+.state-muted {
+  background: #e9ecf0;
+  color: #566170;
+}
+.compact-expiry,
+.detail-toggle {
+  font-size: 12px;
+  color: #64748b;
+}
+.detail-toggle {
+  color: #344767;
+}
+.compact-row details[open] .detail-toggle {
+  text-decoration: underline;
+}
+.compact-detail {
+  padding: 8px 16px 12px;
+  font-size: 13px;
+  color: #53647c;
+}
+.compact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.compact-actions button {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.compact-share {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 4px;
+}
+.compact-share button {
+  min-height: 44px;
+  background: transparent;
+  color: #344767;
+}
+@media (max-width: 420px) {
+  .compact-summary {
+    padding: 12px 10px 4px;
+    gap: 8px;
+  }
+  .compact-state {
+    max-width: 42%;
+  }
+}
+
+/* User identity rows: same template and styling in both administrative panels. */
+.user-summary {
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+  min-height: 88px;
+}
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf0f6;
+  color: #405473;
+  font-size: 16px;
+  font-weight: 500;
+}
+.user-summary .compact-main {
+  flex: 1;
+}
+.user-summary .user-name {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+.user-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #64748b;
+  gap: 2px;
+}
+.user-more > span:first-child {
+  letter-spacing: 2px;
+}
+.user-row .compact-detail {
+  padding-left: 72px;
+}
+.management-ui .compact-list {
+  margin-top: 16px;
+}
+.management-ui .compact-actions {
+  margin-top: 8px;
+}
+.management-ui .compact-share button {
+  background: transparent;
+  color: #344767;
+}
+.management-ui .compact-summary .compact-name {
+  margin: 0;
+}
+.management-ui .compact-summary .compact-meta {
+  margin-top: 4px;
+}
+@media (max-width: 420px) {
+  .user-summary {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+  .user-row .compact-detail {
+    padding-left: 10px;
+  }
+  .user-avatar {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+}
+
+.install-banner {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(92vw, 440px);
+  padding: 14px;
+  background: white;
+  color: #344767;
+  box-shadow: 0 4px 20px #0003;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+}
+.install-banner span {
+  width: 100%;
+  font-weight: 600;
+}
+.install-banner button,
+.install-dialog button {
+  min-height: 44px;
+  padding: 10px 14px;
+  background: #344767;
+  color: white;
+}
+.install-banner button:last-child {
+  background: #edf0f6;
+  color: #344767;
+}
+.install-dialog {
+  width: min(92vw, 440px);
+  padding: 24px;
+  color: #344767;
+}
+.install-dialog::backdrop {
+  background: #0007;
+}
+.install-dialog h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+.install-dialog p {
+  margin: 16px 0;
+}
+
+/* A single responsive sidebar layout for every account role. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+.app-sidebar {
+  height: 100vh;
+  height: 100dvh;
+  max-width: calc(100vw - 44px);
+  min-height: 0;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.app-sidebar > nav {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.app-sidebar > :not(nav) {
+  flex-shrink: 0;
+}
+.app-sidebar nav a,
+.app-sidebar nav button {
+  min-height: 44px;
+}
+.sidebar-session {
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e3e7ef;
+}
+.sidebar-logout {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #344767;
+  background: #edf0f6;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sidebar-dark .sidebar-session {
+  border-color: #ffffff22;
+}
+.sidebar-dark .sidebar-logout {
+  color: white;
+  background: #ffffff12;
+}
+.sidebar-logout:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (max-height: 500px) {
+  .app-sidebar > div:first-child {
+    height: auto;
+    padding: 10px 16px;
+  }
+  .app-sidebar > div:not(.sidebar-session):last-of-type {
+    padding: 8px;
+  }
+}

@@ -1,13 +1,13 @@
 <body
   @open-profile.window="goTo('profile')"
-  class="bg-material-bg text-material-text h-screen flex overflow-hidden font-sans antialiased"
+  class="app-shell bg-material-bg text-material-text flex overflow-hidden font-sans antialiased"
   x-data="resident"
   @keydown.escape.window="closePanels()"
 >
   <!-- SIDEBAR / DRAWER -->
   <aside
     :class="drawer ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-    class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col h-screen shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
+    class="app-sidebar fixed md:relative inset-y-0 left-0 z-40 w-64 bg-white flex flex-col shrink-0 shadow-soft transition-transform duration-300 -translate-x-full md:translate-x-0"
     style="height: 100dvh"
     aria-label="Menú principal"
   >
@@ -94,13 +94,6 @@
           ><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span
         ><span class="ml-2">Soporte</span>
       </a>
-      <button
-        @click="logout()"
-        class="flex items-center gap-3 w-full px-3 py-4 mt-4 text-sm font-semibold text-material-dark"
-      >
-        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar
-        sesión
-      </button>
     </nav>
     <div class="p-4 border-t border-material-border">
       <a
@@ -127,6 +120,7 @@
         <i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i
       ></a>
     </div>
+    <!-- SIDEBAR_LOGOUT -->
   </aside>
   <div
     x-show="drawer"
@@ -196,7 +190,20 @@
         id="accesos"
         aria-labelledby="t-abrir"
       >
-        <h2 id="t-abrir" class="sr-only">Abrir accesos</h2>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 id="t-abrir" class="text-base font-bold text-material-dark">
+            Mis accesos
+          </h2>
+          <button
+            type="button"
+            @click="openSheet()"
+            :disabled="loading || busy || doors.length === 0"
+            class="w-full sm:w-auto bg-material-dark text-white px-4 py-3 text-sm font-semibold shadow-soft hover:bg-slate-700 disabled:opacity-50"
+          >
+            <i class="fa-solid fa-plus mr-2" aria-hidden="true"></i>Crear código
+            de visita
+          </button>
+        </div>
         <p
           x-show="!loading && doors.length === 0"
           class="bg-white p-5 mb-6 text-sm"
@@ -348,114 +355,7 @@
               </div>
             </template>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <template x-for="p in livePasses" :key="p.id">
-                <article class="border border-material-border flex flex-col">
-                  <div class="p-4 flex-1">
-                    <div class="flex items-center justify-between mb-3">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold"
-                        :class="expiring(p) ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
-                      >
-                        <i
-                          :class="expiring(p) ? 'fa-solid fa-hourglass-end' : 'fa-solid fa-check'"
-                          class="text-[10px]"
-                          aria-hidden="true"
-                        ></i>
-                        <span x-text="passStatus(p)"></span>
-                      </span>
-                      <span
-                        class="text-xs text-material-text flex items-center gap-1.5"
-                        ><i :class="p.icon" aria-hidden="true"></i
-                        ><span x-text="p.type"></span
-                      ></span>
-                    </div>
-                    <h3
-                      class="text-sm font-bold text-material-dark"
-                      x-text="p.name"
-                    ></h3>
-                    <p
-                      class="text-xs text-gray-400 mt-0.5"
-                      x-text="'Acceso: ' + accessLabel(p)"
-                    ></p>
-
-                    <p
-                      class="code text-2xl text-material-dark mt-4"
-                      x-text="grouped(p.code)"
-                    ></p>
-
-                    <div class="mt-4">
-                      <div
-                        class="h-1 bg-gray-100"
-                        role="progressbar"
-                        aria-label="Tiempo restante"
-                        :aria-valuenow="percent(p)"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                      >
-                        <div
-                          class="h-1"
-                          :class="expiring(p) ? 'bg-amber-500' : 'bg-material-dark'"
-                          :style="'width:' + (pct(p)) + '%'"
-                        ></div>
-                      </div>
-                      <p class="text-xs text-gray-500 mt-1.5">
-                        <span x-text="expiryText(p)"></span> · quedan
-                        <span
-                          class="font-medium text-material-dark"
-                          x-text="leftText(p)"
-                        ></span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    class="border-t border-material-border grid"
-                    :class="canExtend(p) ? 'grid-cols-4' : 'grid-cols-3'"
-                  >
-                    <button
-                      @click="copy(p)"
-                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
-                      aria-label="Copiar código"
-                    >
-                      <i class="fa-regular fa-copy" aria-hidden="true"></i
-                      >Copiar
-                    </button>
-                    <button
-                      @click="share(p)"
-                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
-                      aria-label="Compartir pase"
-                    >
-                      <i class="fa-solid fa-share-nodes" aria-hidden="true"></i
-                      >Compartir
-                    </button>
-                    <button
-                      x-show="canExtend(p)"
-                      x-cloak
-                      @click="extend(p)"
-                      class="py-2.5 text-xs font-medium text-material-dark hover:bg-gray-50 flex flex-col items-center gap-1"
-                      aria-label="Extender 30 minutos"
-                    >
-                      <i
-                        class="fa-solid fa-clock-rotate-left"
-                        aria-hidden="true"
-                      ></i
-                      >+30 min
-                    </button>
-                    <button
-                      @click="confirmRevoke(p)"
-                      class="py-2.5 text-xs font-medium flex flex-col items-center gap-1"
-                      :class="armed === 'r' + p.id ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'"
-                    >
-                      <i class="fa-solid fa-ban" aria-hidden="true"></i
-                      ><span
-                        x-text="armed === 'r' + p.id ? '¿Seguro?' : 'Revocar'"
-                      ></span>
-                    </button>
-                  </div>
-                </article>
-              </template>
-            </div>
+            <!-- CODE_LIST -->
           </div>
         </div>
       </section>
@@ -706,8 +606,8 @@
             ></template>
           </div>
           <p x-show="form.mode === 'visit'" class="text-xs mt-3">
-            Tienes 7 días para comenzar la visita. Desde la primera orden
-            confirmada tendrás 10 minutos para volver a abrir.
+            Tienes 7 días para comenzar la visita. Desde el primer envío tendrás
+            10 minutos para volver a abrir, incluso si no llega la confirmación.
           </p>
           <p x-show="form.mode === 'unlimited'" class="text-xs mt-3">
             Funciona hasta que lo revoques.
@@ -847,8 +747,8 @@
           <p class="text-sm mt-2" x-text="accessLabel(resultCard)"></p>
           <p class="text-sm mt-2" x-text="expiryText(resultCard)"></p>
           <p x-show="resultCard.visit" class="text-xs mt-3">
-            Una visita: 10 minutos para reintentar desde la primera orden
-            confirmada.
+            Una visita: 10 minutos para reintentar desde el primer envío,
+            incluso si no llega la confirmación.
           </p>
           <div class="grid grid-cols-2 gap-3 mt-6">
             <button @click="copy(resultCard)" class="border p-3 text-sm">

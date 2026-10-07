@@ -7,7 +7,7 @@ export async function superPanel(env, offset = 0) {
       Math.floor((now - offset * 60000) / 86400000) * 86400000 + offset * 60000;
   const [tenants, devices, counts, admins, audit] = await Promise.all([
     env.DB.prepare(
-      `SELECT t.id,t.name,t.slug,t.status,(SELECT COUNT(*) FROM codes c WHERE c.tenant_id=t.id AND c.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM direct_operations o WHERE o.tenant_id=t.id AND o.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM relay_commands r WHERE r.tenant_id=t.id AND r.status IN ('pending','uncertain')) AS pending FROM tenants t ORDER BY t.name`,
+      `SELECT t.id,t.name,t.slug,t.status,(SELECT COUNT(*) FROM codes c WHERE c.tenant_id=t.id AND c.status IN ('pending','uncertain'))+(SELECT COUNT(*) FROM direct_operations o WHERE o.tenant_id=t.id AND o.status IN ('pending','uncertain','unconfirmed'))+(SELECT COUNT(*) FROM relay_commands r WHERE r.tenant_id=t.id AND r.status IN ('pending','uncertain','unconfirmed')) AS pending FROM tenants t ORDER BY t.name`,
     ).all(),
     listInventory(env),
     env.DB.prepare(

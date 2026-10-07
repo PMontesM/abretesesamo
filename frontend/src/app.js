@@ -1,3 +1,5 @@
+import { setupInstall } from "./install-app.js";
+import { renewSession } from "./session-renewal.js";
 import { profilePanel } from "./profile.js";
 import { initNavigation, navigate, destroyNavigation } from "./navigation.js";
 import { buildingPicker } from "./building-picker.js";
@@ -261,6 +263,20 @@ function resident() {
         time: date(l.at),
       }));
     },
+    showPassOwner: false,
+    get displayedPasses() {
+      return this.livePasses;
+    },
+    canShare(p) {
+      return (
+        !p.codeMasked &&
+        p.status === "active" &&
+        (!p.expiresAt || p.expiresAt > this.now)
+      );
+    },
+    canRevoke(p) {
+      return ["active", "pending", "uncertain"].includes(p.status);
+    },
     get livePasses() {
       return this.passes.filter(
         (p) =>
@@ -285,7 +301,7 @@ function resident() {
         : p.status === "uncertain"
           ? "Requiere revisión"
           : this.expiring(p)
-            ? "Vence pronto"
+            ? "Por vencer"
             : "Activo";
     },
     pct(p) {
@@ -309,9 +325,11 @@ function resident() {
     leftText(p) {
       if (!p.expiresAt) return "sin límite de tiempo";
       const m = Math.max(0, Math.ceil((p.expiresAt - this.now) / 60000));
-      return m < 60
-        ? m + " min"
-        : Math.floor(m / 60) + " h " + (m % 60) + " min";
+      return m >= 1440
+        ? Math.ceil(m / 1440) + " días"
+        : m < 60
+          ? m + " min"
+          : Math.floor(m / 60) + " h " + (m % 60) + " min";
     },
     statusLine(d) {
       return d.isDemo
@@ -497,7 +515,7 @@ function resident() {
         "\n" +
         this.expiryText(p) +
         (p.visit
-          ? "\nAl abrir por primera vez tendrás 10 minutos para volver a abrir."
+          ? "\nDesde el primer envío tendrás 10 minutos para volver a abrir, incluso si no llega la confirmación."
           : "") +
         "\n" +
         location.origin +
@@ -532,3 +550,7 @@ Alpine.data("resident", resident);
 Alpine.data("admin", admin);
 window.Alpine = Alpine;
 Alpine.start();
+
+setupInstall();
+renewSession();
+document.addEventListener("visibilitychange", renewSession);

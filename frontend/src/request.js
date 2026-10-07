@@ -1,3 +1,4 @@
+import { renewSession } from "./session-renewal.js";
 // All clients share response parsing; this helper never retries an opening command.
 export async function requestJSON(path, body, options = {}) {
   let response;
@@ -33,5 +34,13 @@ export async function requestJSON(path, body, options = {}) {
     error.status = response.status;
     throw error;
   }
+  if (
+    !path.includes("logout") &&
+    !path.includes("password") &&
+    !path.includes("phone") &&
+    !path.includes("recover") &&
+    document.body.hasAttribute("x-data")
+  )
+    void renewSession();
   return data;
 }

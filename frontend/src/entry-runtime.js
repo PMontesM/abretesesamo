@@ -344,6 +344,13 @@ export function clientApp(config) {
     d.append(...buttons);
     return d;
   }
+  function configureVisitorCode(code) {
+    // Normalize pasted separators before validation; never truncate a digit.
+    code.removeAttribute("maxlength");
+    const normalize = () => { code.value = code.value.replace(/\s/g, ""); };
+    normalize();
+    code.addEventListener("input", normalize);
+  }
   function input(form, label, type = "text", value = "", required = true) {
     const id = "f-" + crypto.randomUUID(),
       l = el("label", label);
@@ -515,7 +522,7 @@ export function clientApp(config) {
         code = input(form, "Código de seis dígitos");
       code.inputMode = "numeric";
       code.pattern = "[0-9]{6}";
-      code.maxLength = 6;
+      configureVisitorCode(code);
       code.autocomplete = "off";
       const submit = el("button", "Continuar");
       submit.type = "submit";
@@ -696,7 +703,7 @@ export function clientApp(config) {
       );
       code.inputMode = "numeric";
       code.pattern = "[0-9]{6}";
-      code.maxLength = 6;
+      configureVisitorCode(code);
       code.autocomplete = "off";
       const residentEntry = params.get("access") === "resident";
       if (residentEntry) {
@@ -740,7 +747,8 @@ export function clientApp(config) {
             ? gates[0].id
             : null;
         gateChoices.replaceChildren(el("legend", "Elige el portón"));
-        gateChoices.hidden = !gates.length;
+        gateChoices.hidden = gates.length < 2;
+        if (gateChoices.hidden) return;
         for (const g of gates) {
           const label = el("label", undefined, "visitor-gate-choice"),
             radio = el("input");

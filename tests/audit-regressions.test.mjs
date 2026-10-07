@@ -46,6 +46,7 @@ async function setup() {
                 path.endsWith("/open-gate")
                   ? {
                       requestId: "11111111-1111-4111-8111-111111111111",
+                      requestedAt: Date.now(),
                       ...body,
                     }
                   : body,
@@ -571,6 +572,44 @@ test("Fecha exacta, filtro de vigentes y contacto de ayuda validado", async () =
     );
     assert.equal(unauthorized.status, 403);
   } finally {
+    s.sqlite.close();
+  }
+});
+
+test("consultar una orden no abre, exige permisos y permite reconocer una revisión liberada", async () => {
+  const s = await setup();
+  const previous = globalThis.fetch;
+  let calls = 0;
+  try {
+    globalThis.fetch = async () => {
+      calls++;
+      throw Error("injected");
+    };
+    await s.req("/t/audit/admin/open-gate", { gateId: s.gate.id });
+    const body = {
+      gateId: s.gate.id,
+      requestId: "11111111-1111-4111-8111-111111111111",
+      requestedAt: Date.now(),
+    };
+    let response = await s.req("/t/audit/admin/open-gate/status", body);
+    assert.equal((await response.json()).status, "uncertain");
+    assert.equal(calls, 1);
+    s.sqlite.exec("UPDATE direct_operations SET status='unconfirmed'");
+    response = await s.req("/t/audit/admin/open-gate/status", body);
+    assert.equal((await response.json()).status, "unconfirmed");
+    assert.equal(calls, 1);
+    assert.equal(
+      (await s.req("/t/audit/admin/open-gate/status", body, "")).status,
+      401,
+    );
+    s.sqlite.prepare("UPDATE direct_operations SET owner_id='other'").run();
+    assert.equal(
+      (await s.req("/t/audit/admin/open-gate/status", body)).status,
+      400,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = previous;
     s.sqlite.close();
   }
 });

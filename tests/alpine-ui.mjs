@@ -257,11 +257,13 @@ try {
     mode: "unlimited",
     gateIds: [gate.id, parking],
   });
-  const card = page
-    .locator("#residentes article")
-    .filter({
-      has: page.getByRole("heading", { name: "temporal", exact: true }),
-    });
+  const card = page.locator("#residentes article").filter({
+    has: page.getByRole("heading", { name: "temporal", exact: true }),
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await shot("compact-users-mobile");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await card.locator("summary").click();
   await card
     .getByRole("button", { name: "Accesos permitidos", exact: true })
     .click();
@@ -320,6 +322,10 @@ try {
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login("pablo");
+  await page
+    .getByRole("button", { name: "Crear código de visita", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   await shot("alpine-resident");
   assert.equal(await page.locator("#pases article").count(), 2);
   const first = page.locator("#accesos article").first(),
@@ -419,6 +425,11 @@ try {
   });
   await page
     .locator("#pases article")
+    .filter({ hasText: "Entrega multipuerta" })
+    .locator("summary")
+    .click();
+  await page
+    .locator("#pases article")
     .filter({
       has: page.getByRole("heading", {
         name: "Entrega multipuerta",
@@ -428,6 +439,23 @@ try {
     .getByRole("button", { name: "Copiar código" })
     .click();
   assert.equal(await page.evaluate(() => window.copiedAccess), created.code);
+  await page
+    .locator("#pases article")
+    .filter({ hasText: "Entrega multipuerta" })
+    .locator("summary")
+    .click();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      "Compact lists should fit the mobile viewport",
+    );
+    await shot("compact-codes-" + width);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
   assert.equal(
     await page
       .getByRole("link", { name: "Todos mis códigos", exact: true })
