@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync, mkdirSync } from "node:fs";
@@ -94,7 +95,7 @@ try {
   const gate = sqlite
     .prepare("SELECT id FROM gates WHERE tenant_id=?")
     .get(owner.tenant_id);
-  const pass = await db.createCode(env, owner, {
+  const pass = await seedCode(env, owner, {
     gateId: gate.id,
     label: "Visita UI",
     days: 1,

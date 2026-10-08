@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { clearAccountCookie } from "../lib/account-session.js";
-
 import { protectCodes } from "../lib/code-privacy.js";
 import { panelData } from "../lib/panel.js";
 import { relayStatus } from "../lib/relay.js";
@@ -13,7 +11,7 @@ export const panel = new Hono();
 panel.get("/", async (c) => {
   const tenant = c.get("tenant");
   const user = c.get("user");
-  return c.html(getAdminHTML(tenant, user, c.req.query("view")));
+  return c.html(getAdminHTML(tenant, user));
 });
 panel.get("/panel", async (c) => {
   const env = c.env;
@@ -55,40 +53,7 @@ panel.post(
     return c.json({ ok: true, connection: await relayStatus(env, gate) });
   },
 );
-panel.get("/dashboard", async (c) => {
-  const env = c.env;
-  const user = c.get("user");
-  return c.json({ ok: true, ...(await db.dashboard(env, user)) });
-});
-panel.post("/logout", async (c) => {
-  const env = c.env;
-  const user = c.get("user");
 
-  await env.DB.prepare(
-    "UPDATE accounts SET session_version=session_version+1 WHERE id=?",
-  )
-    .bind(user.account_id)
-    .run();
-  return Response.json(
-    { ok: true },
-    { headers: { "Set-Cookie": clearAccountCookie() } },
-  );
-});
-panel.get("/gates", async (c) => {
-  const env = c.env;
-  const user = c.get("user");
-  return c.json({
-    ok: true,
-    gates: (await db.allowedGates(env, user)).map((g) => ({
-      id: g.id,
-      name: g.name,
-      status: g.status,
-      hasRelay: g.trigger_type === "mqtt",
-      connection_state: g.connection_state,
-      connection_checked_at: g.connection_checked_at,
-    })),
-  });
-});
 panel.post(
   "/support",
   requireMaster("Solo el administrador puede cambiar el contacto."),
@@ -105,17 +70,3 @@ panel.post(
     });
   },
 );
-panel.get("/logs", async (c) => {
-  const env = c.env;
-  const tenant = c.get("tenant");
-  const user = c.get("user");
-  return c.json({
-    ok: true,
-    ...(await protectCodes(
-      env,
-      await db.listLogs(env, tenant.id, user),
-      user,
-      tenant.id,
-    )),
-  });
-});

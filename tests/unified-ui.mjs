@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import assert from "node:assert/strict";
 
 import { createRequire } from "node:module";
@@ -12,7 +13,7 @@ import { makeDB } from "./db.mjs";
 
 import * as db from "../src/lib/db.js";
 
-import { createPass } from "../src/lib/passes.js";
+import { createCode } from "../src/lib/codes.js";
 
 import { hashSecret } from "../src/lib/security.js";
 
@@ -56,7 +57,7 @@ await db.createUser(env, tenantId, {
 
 const user = sqlite.prepare("SELECT * FROM users WHERE username='pablo'").get();
 
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: gate.id,
   label: "Visita de María",
   expiresAt: Date.now() + 2 * 3600000,
@@ -64,7 +65,7 @@ await db.createCode(env, user, {
   visit: true,
 });
 
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: parking,
   label: "Entrega de supermercado",
   expiresAt: Date.now() + 30 * 60000,
@@ -431,14 +432,27 @@ try {
     .get().code;
   await context.clearCookies();
   await page.goto("https://app.test/visit");
-  await page.getByLabel("Código de seis dígitos").fill(code.slice(0, 3) + " " + code.slice(3));
-  assert.equal(await page.getByLabel("Código de seis dígitos").inputValue(), code);
+  await page
+    .getByLabel("Código de seis dígitos")
+    .fill(code.slice(0, 3) + " " + code.slice(3));
+  assert.equal(
+    await page.getByLabel("Código de seis dígitos").inputValue(),
+    code,
+  );
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.waitForURL("**/t/edificio-nuevo");
   await page.waitForTimeout(500);
-  assert.equal(await page.getByRole("group", { name: "Elige el portón" }).count(), 0);
-  await page.getByLabel("Código de seis dígitos").fill(code.slice(0, 3) + "\u00a0" + code.slice(3));
-  assert.equal(await page.getByLabel("Código de seis dígitos").inputValue(), code);
+  assert.equal(
+    await page.getByRole("group", { name: "Elige el portón" }).count(),
+    0,
+  );
+  await page
+    .getByLabel("Código de seis dígitos")
+    .fill(code.slice(0, 3) + "\u00a0" + code.slice(3));
+  assert.equal(
+    await page.getByLabel("Código de seis dígitos").inputValue(),
+    code,
+  );
   await page
     .getByRole("button", { name: "Enviar orden de apertura", exact: true })
     .click();

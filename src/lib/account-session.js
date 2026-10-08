@@ -20,10 +20,7 @@ async function sign(env, text) {
     ),
   );
 }
-export const accountCookiePresent = (request) =>
-  (request.headers.get("Cookie") || "")
-    .split(";")
-    .some((p) => p.trim().startsWith("account_session="));
+
 export const clearAccountCookie = () =>
   "account_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0";
 async function sessionPolicy(env, accountId) {

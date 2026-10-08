@@ -100,7 +100,7 @@ const users = [
   return { id, username, phone, role, password };
 });
 const used = new Set(),
-  passes = [];
+  codes = [];
 for (const [label, owner, access, mode, days, status] of [
   ["Familia · acceso permanente", 1, [0, 1], "unlimited", 0, "active"],
   ["Visita · una ventana de 10 minutos", 2, [0, 1], "visit", 7, "active"],
@@ -134,7 +134,7 @@ for (const [label, owner, access, mode, days, status] of [
       gate_id: gates[n].id,
       authorized_config: "{}",
     });
-  passes.push({ code, label, mode, status });
+  codes.push({ code, label, mode, status });
 }
 insert("platform_audit_log", {
   id: randomUUID(),
@@ -152,12 +152,12 @@ writeFileSync(resolve(out, "restablecer-demo.sql"), sql.join("\n") + "\n", {
 });
 writeFileSync(
   resolve(out, "accesos-demo.json"),
-  JSON.stringify({ tenantId, users, passes }, null, 2),
+  JSON.stringify({ tenantId, users, codes }, null, 2),
   { flag: "wx" },
 );
 writeFileSync(
   resolve(out, "ACCESOS-DEMO.md"),
-  `# Demo de PortonSmart\n\nLogin: ${origin}/login\nVisitantes: ${origin}/visit\nEnlace del edificio: ${origin}/t/residencial-demo\n\nLas aperturas son simuladas. Los teléfonos son identificadores ficticios y no reciben mensajes. Las cuentas ya están activadas.\n\n| Rol | Teléfono | Contraseña |\n|---|---|---|\n${users.map((u) => `| ${u.role === "master" ? "Administrador" : "Residente"} | ${u.phone} | ${u.password} |`).join("\n")}\n\n## Códigos de ejemplo\n\n${passes.map((p) => `- **${p.code}**: ${p.label} (${p.status}).`).join("\n")}\n\nLa visita de un solo uso permite reintentos durante diez minutos desde su primera apertura. No se inicia al consultar el código. Las cuentas de superadministración se conservan.\n`,
+  `# Demo de PortonSmart\n\nLogin: ${origin}/login\nVisitantes: ${origin}/visit\nEnlace del edificio: ${origin}/t/residencial-demo\n\nLas aperturas son simuladas. Los teléfonos son identificadores ficticios y no reciben mensajes. Las cuentas ya están activadas.\n\n| Rol | Teléfono | Contraseña |\n|---|---|---|\n${users.map((u) => `| ${u.role === "master" ? "Administrador" : "Residente"} | ${u.phone} | ${u.password} |`).join("\n")}\n\n## Códigos de ejemplo\n\n${codes.map((p) => `- **${p.code}**: ${p.label} (${p.status}).`).join("\n")}\n\nLa visita de un solo uso permite reintentos durante diez minutos desde su primera apertura. No se inicia al consultar el código. Las cuentas de superadministración se conservan.\n`,
   { flag: "wx" },
 );
 console.log("SQL y accesos preparados. No se modificó la base remota.");

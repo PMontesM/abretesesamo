@@ -1,3 +1,4 @@
+import { logoutSession } from "./session-renewal.js";
 import { requestJSON } from "./request.js";
 // Shared browser UI. All database content uses textContent; each action captures its own building ID.
 export function clientApp(config) {
@@ -347,7 +348,9 @@ export function clientApp(config) {
   function configureVisitorCode(code) {
     // Normalize pasted separators before validation; never truncate a digit.
     code.removeAttribute("maxlength");
-    const normalize = () => { code.value = code.value.replace(/\s/g, ""); };
+    const normalize = () => {
+      code.value = code.value.replace(/\s/g, "");
+    };
     normalize();
     code.addEventListener("input", normalize);
   }
@@ -665,7 +668,7 @@ export function clientApp(config) {
         button(
           "Cerrar sesión",
           async () => {
-            await api("/account/logout", {});
+            await logoutSession();
             location.href = "/login";
           },
           "secondary",

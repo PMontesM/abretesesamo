@@ -10,7 +10,6 @@ import {
 } from "./account-provision.js";
 import { requireInventory } from "./relay-inventory.js";
 import { deviceConfig } from "./relay.js";
-import { takeAttempt } from "./ratelimit.js";
 import {
   InputError,
   required,
@@ -342,124 +341,7 @@ export async function saveGate(env, tenantId, body, actor = null) {
     ]);
   return id;
 }
-export async function createCode(env, user, body) {
-  const gate = await requireGate(env, user, body.gateId),
-    label = required(body.label, "Nombre o nota", 60);
-  const days = Number(body.days ?? 0);
-  if (
-    !Number.isInteger(days) ||
-    days < 0 ||
-    days > 3650 ||
-    typeof body.singleUse !== "boolean"
-  )
-    throw new InputError("Vigencia o tipo inválidos");
-  if (!(await takeAttempt(env, "create-code:" + user.id, 30)))
-    throw new InputError(
-      "Límite de 30 códigos por cinco minutos. Espera antes de crear más.",
-    );
-  if (
-    body.visit === true &&
-    (body.singleUse || (days < 1 && body.expiresAt === undefined))
-  )
-    throw new InputError(
-      "Una visita necesita una fecha límite y no puede ser de un solo uso",
-    );
-  const expires =
-    body.expiresAt === undefined
-      ? days
-        ? Date.now() + days * 86400000
-        : null
-      : body.expiresAt;
-  if (
-    expires !== null &&
-    (!Number.isSafeInteger(expires) ||
-      expires <= Date.now() ||
-      expires > Date.now() + 3650 * 86400000)
-  )
-    throw new InputError("Elige una fecha futura válida");
-  if (body.visit === true && expires === null)
-    throw new InputError("Elige hasta cuándo puede comenzar la visita");
-  for (let i = 0; i < 20; i++) {
-    const n = crypto.getRandomValues(new Uint32Array(1))[0];
-    if (n >= 4294000000) continue;
-    const code = String(n % 1000000).padStart(6, "0");
-    const row = await env.DB.prepare(
-      `INSERT INTO codes(code,tenant_id,gate_id,label,owner,owner_id,single_use,expires_at,created_at,visit_mode)
-      SELECT ?,?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM codes WHERE tenant_id=?)<20000 AND (SELECT COUNT(*) FROM codes WHERE tenant_id=? AND owner_id=? AND status IN ('active','pending','uncertain') AND (expires_at IS NULL OR expires_at>?))<200 ON CONFLICT DO NOTHING RETURNING *`,
-    )
-      .bind(
-        code,
-        user.tenant_id,
-        gate.id,
-        label,
-        user.username,
-        user.id,
-        body.singleUse ? 1 : 0,
-        expires,
-        Date.now(),
-        body.visit === true ? 1 : 0,
-        user.tenant_id,
-        user.tenant_id,
-        user.id,
-        Date.now(),
-      )
-      .first();
-    if (row) return { ...row, gate_name: gate.name };
-  }
-  throw new InputError(
-    "No se creó el código: revisa la cuota de 200 accesos vigentes por usuario o 20,000 registros por edificio",
-  );
-}
-export async function listCodes(env, tenantId, user = null, options = {}) {
-  const owner = user && user.role !== "master" ? user.id : null;
-  const page = Number(options.page || 0);
-  if (!Number.isSafeInteger(page) || page < 0 || page > 100000)
-    throw new InputError("Página inválida");
-  const search = String(options.search || "").trim();
-  if (search.length > 64) throw new InputError("Búsqueda inválida");
-  const query = String(options.query || "")
-      .trim()
-      .toLowerCase(),
-    filterOwner = String(options.ownerId || ""),
-    filterGate = String(options.gateId || "");
-  if (query.length > 100 || filterOwner.length > 100 || filterGate.length > 100)
-    throw new InputError("Filtro inválido");
-  const requestedState = String(options.status || "");
-  const state = requestedState === "current" ? "" : requestedState;
-  if (
-    state &&
-    !["active", "pending", "uncertain", "revoked", "expired", "used"].includes(
-      state,
-    )
-  )
-    throw new InputError("Estado inválido");
-  return rows(
-    env.DB.prepare(
-      "SELECT c.*,COALESCE((SELECT GROUP_CONCAT(linked.name, ' / ') FROM code_gates cg JOIN gates linked ON linked.id=cg.gate_id AND linked.tenant_id=cg.tenant_id WHERE cg.tenant_id=c.tenant_id AND cg.code=c.code),g.name) AS gate_name,g.status AS gate_status FROM codes c LEFT JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id WHERE c.tenant_id=? AND (? IS NULL OR c.owner_id=?) AND (?='' OR (CASE WHEN c.owner_id=? THEN c.code ELSE substr(c.code,1,2)||'••'||substr(c.code,5,2) END)=?) AND (?='' OR CASE WHEN c.status='active' AND c.expires_at IS NOT NULL AND c.expires_at<=? THEN 'expired' ELSE c.status END=?) AND (?=0 OR (c.status IN ('pending','uncertain') OR (c.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)))) AND (?='' OR c.owner_id=?) AND (?='' OR c.gate_id=? OR EXISTS(SELECT 1 FROM code_gates cg WHERE cg.tenant_id=c.tenant_id AND cg.code=c.code AND cg.gate_id=?)) AND (?='' OR instr(lower((CASE WHEN c.owner_id=? THEN c.code ELSE substr(c.code,1,2)||'••'||substr(c.code,5,2) END)||' '||COALESCE(c.label,'')||' '||COALESCE(c.owner,'')),?)>0) ORDER BY c.created_at DESC,c.code DESC LIMIT 100 OFFSET ?",
-    ).bind(
-      tenantId,
-      owner,
-      owner,
-      search,
-      user?.id || "",
-      search,
-      state,
-      Date.now(),
-      state,
-      requestedState === "current" ? 1 : 0,
-      Date.now(),
-      filterOwner,
-      filterOwner,
-      filterGate,
-      filterGate,
-      filterGate,
-      query,
-      user?.id || "",
-      query,
-      page * 100,
-    ),
-  );
-}
+
 export async function revokeCode(
   env,
   tenantId,
@@ -631,40 +513,7 @@ export async function listLogs(env, tenantId, user) {
     .first();
   return { logs, opensLast24: count.count };
 }
-export async function dashboard(env, user) {
-  const now = Date.now(),
-    owner = user.role === "master" ? null : user.id;
-  const [totals, passes, hours] = await Promise.all([
-    env.DB.prepare(
-      "SELECT SUM(CASE WHEN at>=? AND outcome='sent' THEN 1 ELSE 0 END) AS sent, SUM(CASE WHEN at>=? AND outcome IN ('uncertain','pending','not_sent') THEN 1 ELSE 0 END) AS attention, MAX(CASE WHEN outcome='sent' THEN at END) AS lastSent FROM logs WHERE tenant_id=? AND (? IS NULL OR owner_id=?)",
-    )
-      .bind(now - 86400000, now - 86400000, user.tenant_id, owner, owner)
-      .first(),
-    env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM codes c JOIN gates g ON g.id=c.gate_id AND g.tenant_id=c.tenant_id WHERE c.tenant_id=? AND (? IS NULL OR c.owner_id=?) AND c.status='active' AND g.status='active' AND (c.expires_at IS NULL OR c.expires_at>?)",
-    )
-      .bind(user.tenant_id, owner, owner, now)
-      .first(),
-    rows(
-      env.DB.prepare(
-        "SELECT CAST(at/3600000 AS INTEGER)*3600000 AS hour, COUNT(*) AS count FROM logs WHERE tenant_id=? AND (? IS NULL OR owner_id=?) AND at>=? AND outcome='sent' GROUP BY hour ORDER BY hour",
-      ).bind(
-        user.tenant_id,
-        owner,
-        owner,
-        Math.floor(now / 3600000) * 3600000 - 23 * 3600000,
-      ),
-    ),
-  ]);
-  return {
-    serverNow: now,
-    sent: totals.sent || 0,
-    attention: totals.attention || 0,
-    lastSent: totals.lastSent,
-    activeCodes: passes.count,
-    hours,
-  };
-}
+
 export async function listTenants(env) {
   const tenants = await rows(
     env.DB.prepare(
@@ -710,12 +559,7 @@ export const audit = (env, admin, action, details) =>
       Date.now(),
     )
     .run();
-export const listAudit = (env) =>
-  rows(
-    env.DB.prepare(
-      "SELECT * FROM platform_audit_log ORDER BY at DESC LIMIT 200",
-    ),
-  );
+
 export async function cleanup(env) {
   await recoverAccess(env);
   await env.DB.batch([

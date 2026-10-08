@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { recoverAccess, RECOVERY_PAUSE_MS } from "../lib/access-recovery.js";
 
 import { turnstileConfig } from "../lib/turnstile.js";
-import { visitorGates } from "../lib/passes.js";
+import { visitorGates } from "../lib/codes.js";
 import { RelayError } from "../lib/relay.js";
 import * as db from "../lib/db.js";
 import { getPublicHTML } from "../html/public.js";

@@ -1,3 +1,5 @@
+import { listCodes, createCode } from "../src/lib/codes.js";
+import { seedCode } from "./code-fixture.mjs";
 // Regresiones: verifican los comportamientos corregidos de la auditoría.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -58,7 +60,7 @@ async function setup() {
       {},
     );
   const code = () =>
-    data.createCode(env, user, {
+    seedCode(env, user, {
       gateId: gate.id,
       label: "Audit",
       days: 0,
@@ -167,11 +169,11 @@ test("A04: búsqueda recupera código antiguo más allá de 1000 registros", asy
     );
     for (let i = 0; i < 1000; i++)
       insert.run("audit-" + i, s.id, s.gate.id, s.user.id, 100 + i);
-    const list = await data.listCodes(s.env, s.id, s.user);
+    const list = await listCodes(s.env, s.id, s.user);
     assert.equal(list.length, 100);
     assert.ok(!list.some((x) => x.code === c.code));
     assert.equal(
-      (await data.listCodes(s.env, s.id, s.user, { search: c.code }))[0].code,
+      (await listCodes(s.env, s.id, s.user, { search: c.code }))[0].code,
       c.code,
     );
     assert.ok(await data.claimCode(s.env, s.id, c.code));
@@ -251,11 +253,10 @@ test("A07: creación aplica límite de frecuencia por usuario", async () => {
     for (let i = 0; i < 40; i++)
       assert.equal(
         (
-          await s.req("/t/audit/admin/create-code", {
-            gateId: s.gate.id,
+          await s.req("/t/audit/admin/codes", {
+            gateIds: [s.gate.id],
             label: "Audit",
-            days: 0,
-            singleUse: false,
+            mode: "unlimited",
           })
         ).status,
         i < 30 ? 200 : 400,
@@ -274,7 +275,7 @@ test("A08: revocar desde edificio deja auditoría con actor", async () => {
     const c = await s.code();
     assert.equal(
       (
-        await s.req("/t/audit/admin/revoke-code", {
+        await s.req("/t/audit/admin/codes/revoke", {
           codeRef: (await (await s.req("/t/audit/admin/codes")).json()).codes[0]
             .codeRef,
         })
@@ -386,7 +387,7 @@ test("fallo de auditoría revierte también revocación desde el panel de edific
     );
     assert.equal(
       (
-        await s.req("/t/audit/admin/revoke-code", {
+        await s.req("/t/audit/admin/codes/revoke", {
           codeRef: (await (await s.req("/t/audit/admin/codes")).json()).codes[0]
             .codeRef,
         })
@@ -426,7 +427,7 @@ test("cambiar solo nombre conserva acceso y migración aditiva puede repetirse",
 test("Una visita confirma antes de enviar, permite repetir sin extender y caduca a los 10 minutos", async () => {
   const s = await setup();
   try {
-    const c = await data.createCode(s.env, s.user, {
+    const c = await seedCode(s.env, s.user, {
       gateId: s.gate.id,
       label: "Visita",
       days: 1,
@@ -468,7 +469,7 @@ test("Una visita confirma antes de enviar, permite repetir sin extender y caduca
 test("Una visita incierta no inicia el plazo ni permite reintentar", async () => {
   const s = await setup();
   try {
-    const c = await data.createCode(s.env, s.user, {
+    const c = await seedCode(s.env, s.user, {
       gateId: s.gate.id,
       label: "Visita",
       days: 1,
@@ -528,7 +529,7 @@ test("Fecha exacta, filtro de vigentes y contacto de ayuda validado", async () =
   const s = await setup();
   try {
     const expires = Date.now() + 3600000;
-    const c = await data.createCode(s.env, s.user, {
+    const c = await seedCode(s.env, s.user, {
       gateId: s.gate.id,
       label: "Fecha exacta",
       expiresAt: expires,
@@ -537,25 +538,24 @@ test("Fecha exacta, filtro de vigentes y contacto de ayuda validado", async () =
     });
     assert.equal(c.expires_at, expires);
     await assert.rejects(
-      data.createCode(s.env, s.user, {
-        gateId: s.gate.id,
+      createCode(s.env, s.user, {
+        gateIds: [s.gate.id],
         label: "Pasada",
-        expiresAt: Date.now() - 1,
-        visit: true,
-        singleUse: false,
+        mode: "repeat",
+        days: -1,
       }),
     );
     assert.equal(
-      (await data.listCodes(s.env, s.id, s.user, { status: "current" })).length,
+      (await listCodes(s.env, s.id, s.user, { status: "current" })).length,
       1,
     );
     await data.revokeCode(s.env, s.id, c.code, s.user);
     assert.equal(
-      (await data.listCodes(s.env, s.id, s.user, { status: "current" })).length,
+      (await listCodes(s.env, s.id, s.user, { status: "current" })).length,
       0,
     );
     assert.equal(
-      (await data.listCodes(s.env, s.id, s.user, { status: "" })).length,
+      (await listCodes(s.env, s.id, s.user, { status: "" })).length,
       1,
     );
     await assert.rejects(

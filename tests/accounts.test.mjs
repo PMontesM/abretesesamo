@@ -144,7 +144,9 @@ test("global superadmin does not inherit tenant access; sensitive operations use
         .status,
       401,
     );
-    const { verifySession } = await import("../src/lib/auth.js");
+    const { accountUser: verifySession } = await import(
+      "../src/lib/account-session.js"
+    );
     const session = await verifySession(
       new Request("https://app.test", { headers: { Cookie: s.getCookie() } }),
       s.env,

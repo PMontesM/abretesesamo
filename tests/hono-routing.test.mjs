@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../src/index.js";
@@ -163,7 +164,7 @@ test("Hono: middleware separates building roles and platform permissions before 
 test("Hono: platform code revocation returns success and keeps masked credentials", async () => {
   const f = await fixture();
   try {
-    const code = await db.createCode(f.env, f.resident, {
+    const code = await seedCode(f.env, f.resident, {
       gateId: f.gate.id,
       label: "Visita",
       days: 1,
@@ -226,4 +227,129 @@ test("Hono: errors and early rejections retain security headers and conceal inte
     assert.ok(!(await response.text()).includes("private-database-detail"));
   }
   assert.equal(queries, 1, "origin rejection must precede database access");
+});
+
+test("current contract retires aliases and creates the same multi-access codes for every panel", async () => {
+  const f = await fixture();
+  try {
+    for (const [method, path, cookie] of [
+      ["GET", "/t/hono/admin/passes", f.cookies.resident],
+      ["POST", "/t/hono/admin/passes", f.cookies.resident],
+      ["POST", "/t/hono/admin/passes/extend", f.cookies.resident],
+      ["POST", "/t/hono/admin/create-code", f.cookies.resident],
+      ["POST", "/t/hono/admin/revoke-code", f.cookies.resident],
+      ["GET", "/t/hono/admin/dashboard", f.cookies.resident],
+      ["GET", "/t/hono/admin/logs", f.cookies.resident],
+      ["GET", "/t/hono/admin/gates", f.cookies.resident],
+      ["POST", "/t/hono/admin/logout", f.cookies.resident],
+      ["POST", "/platform/logout", f.cookies.platform],
+      ["GET", "/platform/api/audit", f.cookies.platform],
+    ])
+      assert.equal(
+        (
+          await request(f.env, path, {
+            cookie,
+            method,
+            ...(method === "POST" ? { body: {} } : {}),
+          })
+        ).status,
+        404,
+        path,
+      );
+    const second = await db.saveGate(f.env, f.tenantId, {
+      name: "Segundo",
+      triggerType: "demo",
+    });
+    await db.setPermissions(f.env, f.tenantId, f.resident.id, [
+      f.gate.id,
+      second,
+    ]);
+    for (const mode of ["visit", "repeat", "unlimited"]) {
+      const response = await request(f.env, "/t/hono/admin/codes", {
+        cookie: f.cookies.resident,
+        body: {
+          label: mode,
+          mode,
+          gateIds: [f.gate.id, second],
+          ...(mode === "repeat" ? { days: 30 } : {}),
+        },
+      });
+      assert.equal(response.status, 200, await response.clone().text());
+      const { code } = await response.json();
+      assert.match(code, /^\d{6}$/);
+      const stored = f.sqlite
+        .prepare("SELECT * FROM codes WHERE code=?")
+        .get(code);
+      assert.equal(
+        stored.expires_at === null
+          ? null
+          : stored.expires_at - stored.created_at,
+        mode === "unlimited" ? null : (mode === "visit" ? 7 : 30) * 86400000,
+      );
+    }
+    const own = await (
+      await request(f.env, "/t/hono/admin/codes", {
+        cookie: f.cookies.resident,
+      })
+    ).json();
+    const admin = await (
+      await request(f.env, "/t/hono/admin/codes", { cookie: f.cookies.master })
+    ).json();
+    const platform = await (
+      await request(f.env, "/platform/api/codes?tenantId=" + f.tenantId, {
+        cookie: f.cookies.platform,
+      })
+    ).json();
+    for (const result of [own, admin, platform]) {
+      assert.equal(result.codes.length, 3);
+      assert.equal(result.codes[0].access.length, 2);
+      assert.ok(!("passes" in result));
+    }
+    assert.match(own.codes[0].code, /^\d{6}$/);
+    assert.equal(admin.codes[0].codeMasked, true);
+    assert.equal(platform.codes[0].codeMasked, true);
+    for (const retired of [
+      { minutes: 30 },
+      { category: "Visita" },
+      { singleUse: true },
+      { expiresAt: Date.now() + 86400000 },
+    ])
+      assert.equal(
+        (
+          await request(f.env, "/t/hono/admin/codes", {
+            cookie: f.cookies.resident,
+            body: {
+              label: "Retirado",
+              mode: "repeat",
+              days: 1,
+              gateIds: [f.gate.id],
+              ...retired,
+            },
+          })
+        ).status,
+        400,
+      );
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM codes").get().n, 3);
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+test("one logout endpoint revokes resident, administrator and platform sessions", async () => {
+  const f = await fixture();
+  try {
+    for (const [role, cookie] of Object.entries(f.cookies)) {
+      assert.equal(
+        (await request(f.env, "/account/logout", { cookie, body: {} })).status,
+        200,
+        role,
+      );
+      const result = await (
+        await request(f.env, "/account/buildings", { cookie })
+      ).json();
+      assert.equal(result.linked, false, role);
+    }
+  } finally {
+    f.sqlite.close();
+  }
 });

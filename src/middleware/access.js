@@ -1,6 +1,6 @@
 import { accountSession } from "../lib/account-session.js";
 import * as db from "../lib/db.js";
-import { verifySession } from "../lib/auth.js";
+import { accountUser } from "../lib/account-session.js";
 import { InputError, jsonBody } from "../lib/security.js";
 import { takeAttempt } from "../lib/ratelimit.js";
 import { protectCodes } from "../lib/code-privacy.js";
@@ -16,7 +16,7 @@ export async function loadTenant(c, next) {
 
 export async function buildingSession(c, next) {
   const tenant = c.get("tenant");
-  const user = await verifySession(c.req.raw, c.env, tenant.id);
+  const user = await accountUser(c.req.raw, c.env, tenant.id);
   if (!user) {
     if (c.req.method === "GET" && /^\/t\/[^/]+\/admin\/?$/.test(c.req.path))
       return c.redirect(new URL("/t/" + tenant.slug, c.req.url).href, 302);
@@ -34,7 +34,7 @@ export function requireMaster(message) {
 }
 
 export async function platformSession(c, next) {
-  const admin = await verifySession(c.req.raw, c.env, null, true);
+  const admin = await accountUser(c.req.raw, c.env, null, true);
   if (!admin)
     throw new InputError("Tu sesión terminó. Vuelve a iniciar sesión.", 401);
   c.set("admin", admin);

@@ -139,47 +139,48 @@ test("login explícito separa contraseña de código y no revela hashes", async 
     403,
   );
   assert.equal(
-    (await req("/t/beta/admin/gates", undefined, cookie)).status,
+    (await req("/t/beta/admin/panel", undefined, cookie)).status,
     401,
   );
 });
 test("crear código almacena el portón elegido y devuelve referencia y vigencia", async () => {
   const d = await json(
-    await req("/t/alpha/admin/create-code", {
-      gateId: "g2",
+    await req("/t/alpha/admin/codes", {
+      gateIds: ["g2"],
       label: "Visita",
       days: 2,
-      singleUse: true,
+      mode: "repeat",
     }),
   );
-  code = d.code.code;
-  assert.equal(d.code.gate_name, "Trasero");
-  assert.equal(d.code.gate_id, "g2");
-  assert.ok(d.code.expires_at > Date.now());
+  code = d.code;
+  const stored = sqlite.prepare("SELECT * FROM codes WHERE code=?").get(d.code);
+  assert.equal(stored.gate_id, "g2");
+  assert.ok(stored.expires_at > Date.now());
   assert.equal(
     (
-      await req("/t/alpha/admin/create-code", {
-        gateId: "gb",
+      await req("/t/alpha/admin/codes", {
+        gateIds: ["gb"],
         label: "X",
         days: 1,
-        singleUse: false,
+        mode: "repeat",
       })
     ).status,
     400,
   );
   assert.equal(
     (
-      await req("/t/alpha/admin/create-code", {
-        gateId: "g2",
+      await req("/t/alpha/admin/codes", {
+        gateIds: ["g2"],
         label: "X",
         days: -1,
-        singleUse: false,
+        mode: "repeat",
       })
     ).status,
     400,
   );
 });
-test("dos solicitudes simultáneas solo envían una orden de un solo uso", async () => {
+test("un registro persistido de consumo estricto conserva la reserva atómica", async () => {
+  sqlite.prepare("UPDATE codes SET single_use=1 WHERE code=?").run(code);
   calls = [];
   const results = await Promise.all([
     req("/t/alpha/api/open", { code }, null),
@@ -199,14 +200,14 @@ test("dos solicitudes simultáneas solo envían una orden de un solo uso", async
 });
 test("fallo del dispositivo conserva código en revisión y bloquea reintento automático", async () => {
   const d = await json(
-    await req("/t/alpha/admin/create-code", {
-      gateId: "g2",
+    await req("/t/alpha/admin/codes", {
+      gateIds: ["g2"],
       label: "Fallo",
       days: 1,
-      singleUse: true,
+      mode: "repeat",
     }),
   );
-  const c = d.code.code;
+  const c = d.code;
   failure = true;
   assert.equal((await req("/t/alpha/api/open", { code: c }, null)).status, 502);
   failure = false;
@@ -230,8 +231,8 @@ test("permisos restringen apertura, creación y códigos existentes", async () =
   const c = (await createSessionCookie(env, { id: "resident" })).split(";")[0];
   const made = await json(
     await req(
-      "/t/alpha/admin/create-code",
-      { gateId: "g2", label: "Residente", days: 1, singleUse: false },
+      "/t/alpha/admin/codes",
+      { gateIds: ["g2"], label: "Residente", days: 1, mode: "repeat" },
       c,
     ),
   );
@@ -248,15 +249,15 @@ test("permisos restringen apertura, creación y códigos existentes", async () =
   assert.equal(
     (
       await req(
-        "/t/alpha/admin/create-code",
-        { gateId: "g2", label: "X", days: 1, singleUse: false },
+        "/t/alpha/admin/codes",
+        { gateIds: ["g2"], label: "X", days: 1, mode: "repeat" },
         c,
       )
     ).status,
     400,
   );
   assert.equal(
-    (await req("/t/alpha/api/open", { code: made.code.code }, null)).status,
+    (await req("/t/alpha/api/open", { code: made.code }, null)).status,
     403,
   );
   assert.equal((await req("/t/alpha/admin/users", undefined, c)).status, 403);
@@ -272,11 +273,11 @@ test("permisos restringen apertura, creación y códigos existentes", async () =
 });
 test("desactivar portón revoca códigos; reactivar no los restaura", async () => {
   const d = await json(
-    await req("/t/alpha/admin/create-code", {
-      gateId: "g2",
+    await req("/t/alpha/admin/codes", {
+      gateIds: ["g2"],
       label: "Desactivar",
       days: 1,
-      singleUse: false,
+      mode: "repeat",
     }),
   );
   await json(
@@ -293,7 +294,7 @@ test("desactivar portón revoca códigos; reactivar no los restaura", async () =
     ),
   );
   assert.equal(
-    (await req("/t/alpha/api/open", { code: d.code.code }, null)).status,
+    (await req("/t/alpha/api/open", { code: d.code }, null)).status,
     403,
   );
   await json(
@@ -310,8 +311,7 @@ test("desactivar portón revoca códigos; reactivar no los restaura", async () =
     ),
   );
   assert.equal(
-    sqlite.prepare("SELECT status FROM codes WHERE code=?").get(d.code.code)
-      .status,
+    sqlite.prepare("SELECT status FROM codes WHERE code=?").get(d.code).status,
     "revoked",
   );
   const ts = await json(
@@ -371,7 +371,7 @@ test("cambiar contraseña invalida sesión y borrar usuario invalida sesión y c
       c,
     ),
   );
-  assert.equal((await req("/t/alpha/admin/gates", undefined, c)).status, 401);
+  assert.equal((await req("/t/alpha/admin/panel", undefined, c)).status, 401);
   r = await req(
     "/account/login",
     { phone: "+12025550109", secret: "password-next" },
@@ -381,15 +381,15 @@ test("cambiar contraseña invalida sesión y borrar usuario invalida sesión y c
   c = r.headers.get("Set-Cookie").split(";")[0];
   const d = await json(
     await req(
-      "/t/alpha/admin/create-code",
-      { gateId: "g1", label: "Borrar", days: 1, singleUse: false },
+      "/t/alpha/admin/codes",
+      { gateIds: ["g1"], label: "Borrar", days: 1, mode: "repeat" },
       c,
     ),
   );
   await json(await req("/t/alpha/admin/delete-user", { userId: u.id }));
-  assert.equal((await req("/t/alpha/admin/gates", undefined, c)).status, 401);
+  assert.equal((await req("/t/alpha/admin/panel", undefined, c)).status, 401);
   assert.equal(
-    (await req("/t/alpha/api/open", { code: d.code.code }, null)).status,
+    (await req("/t/alpha/api/open", { code: d.code }, null)).status,
     403,
   );
 });
@@ -397,7 +397,7 @@ test("métricas cuentan todas las órdenes en 24h, no solo las visibles", async 
   const gate = await data.getGate(env, "a", "g1");
   for (let i = 0; i < 230; i++)
     await data.logOpen(env, "a", gate, "DIRECTO", "Prueba", "admin", "sent");
-  const d = await json(await req("/t/alpha/admin/logs"));
+  const d = await json(await req("/t/alpha/admin/panel"));
   assert.equal(d.logs.length, 200);
   assert.ok(d.opensLast24 >= 230);
   const r = await json(
@@ -474,14 +474,14 @@ test("portones nuevos no conceden permisos implícitos a residentes", async () =
 });
 test("solicitudes pendientes no se liberan antes de dos minutos y se recuperan para revisión", async () => {
   const d = await json(
-    await req("/t/alpha/admin/create-code", {
-      gateId: "g1",
+    await req("/t/alpha/admin/codes", {
+      gateIds: ["g1"],
       label: "Interrupción",
       days: 1,
-      singleUse: true,
+      mode: "repeat",
     }),
   );
-  const row = await data.claimCode(env, "a", d.code.code);
+  const row = await data.claimCode(env, "a", d.code);
   assert.ok(row);
   assert.equal(
     (
@@ -516,18 +516,18 @@ test("solicitudes pendientes no se liberan antes de dos minutos y se recuperan p
 });
 test("códigos vencidos, edificios suspendidos y sesiones cerradas bloquean aperturas", async () => {
   const d = await json(
-    await req("/t/alpha/admin/create-code", {
-      gateId: "g1",
+    await req("/t/alpha/admin/codes", {
+      gateIds: ["g1"],
       label: "Vencer",
       days: 1,
-      singleUse: false,
+      mode: "repeat",
     }),
   );
   sqlite
     .prepare("UPDATE codes SET expires_at=? WHERE code=?")
-    .run(Date.now() - 1, d.code.code);
+    .run(Date.now() - 1, d.code);
   assert.equal(
-    (await req("/t/alpha/api/open", { code: d.code.code }, null)).status,
+    (await req("/t/alpha/api/open", { code: d.code }, null)).status,
     403,
   );
   await json(
@@ -548,8 +548,8 @@ test("códigos vencidos, edificios suspendidos y sesiones cerradas bloquean aper
       platformCookie,
     ),
   );
-  await json(await req("/t/alpha/admin/logout", {}));
-  assert.equal((await req("/t/alpha/admin/gates")).status, 401);
+  await json(await req("/account/logout", {}));
+  assert.equal((await req("/t/alpha/admin/panel")).status, 401);
 });
 test("usuario recreado no hereda historial del anterior con igual nombre", async () => {
   const resident = sqlite

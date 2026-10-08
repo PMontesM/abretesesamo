@@ -21,16 +21,7 @@ export function required(value, label, max = 100) {
     throw new InputError(`${label} inválido`);
   return value.trim();
 }
-export function username(value) {
-  const name = required(value, "Usuario", 254).toLowerCase();
-  const simple = /^[a-z0-9._-]{1,64}$/.test(name);
-  const email = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,63}$/.test(name);
-  if (!simple && !email)
-    throw new InputError(
-      "Usa un nombre de usuario válido o un correo electrónico",
-    );
-  return name;
-}
+
 export function triggerConfig(url, method = "GET") {
   let parsed;
   try {

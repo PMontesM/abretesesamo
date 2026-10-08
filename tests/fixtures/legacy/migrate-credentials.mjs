@@ -1,7 +1,17 @@
+function username(value) {
+  const name = required(value, "Usuario", 254).toLowerCase();
+  const simple = /^[a-z0-9._-]{1,64}$/.test(name);
+  const email = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,63}$/.test(name);
+  if (!simple && !email)
+    throw new InputError(
+      "Usa un nombre de usuario válido o un correo electrónico",
+    );
+  return name;
+}
 // Offline utility. Inputs contain existing credentials: store privately and remove after migration.
 import { readFileSync, writeFileSync } from "node:fs";
 import { randomBytes, pbkdf2Sync } from "node:crypto";
-import { username } from "../../../src/lib/security.js";
+import { required, InputError } from "../../../src/lib/security.js";
 const [usersFile, adminsFile, outputFile] = process.argv.slice(2);
 if (!usersFile || !adminsFile || !outputFile)
   throw Error(

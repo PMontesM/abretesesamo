@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeDB } from "./db.mjs";
-import { dashboard } from "../src/lib/db.js";
+import { panelData } from "../src/lib/panel.js";
 import worker from "../src/index.js";
 test("resumen: cifras exactas, vigencia y separación de residentes y edificios", async () => {
   const { sqlite, db: DB } = makeDB(),
@@ -32,35 +32,32 @@ test("resumen: cifras exactas, vigencia y separación de residentes y edificios"
         "INSERT INTO codes(code,tenant_id,gate_id,owner_id,expires_at,status,created_at) VALUES(?,?,?,?,?,?,?)",
       )
       .run(code, "a", "ga", owner, expires, status, now);
-  const resident = await dashboard(env, {
+  const resident = await panelData(env, {
     id: "resident",
     tenant_id: "a",
     role: "user",
   });
-  assert.equal(resident.sent, 205);
-  assert.equal(resident.attention, 2);
-  assert.equal(resident.activeCodes, 1);
-  assert.equal(resident.lastSent, now - 1000);
-  assert.equal(
-    resident.hours.reduce((n, h) => n + h.count, 0),
-    205,
-  );
-  const admin = await dashboard(env, {
+  assert.equal(resident.opensLast24, 205);
+  assert.equal(resident.logs.length, 200);
+  assert.equal(resident.codes.length, 1);
+  assert.ok(resident.logs.some((l) => l.at === now - 1000));
+
+  const admin = await panelData(env, {
     id: "admin",
     tenant_id: "a",
     role: "master",
   });
-  assert.equal(admin.sent, 206);
-  assert.equal(admin.activeCodes, 2);
-  const replaced = await dashboard(env, {
+  assert.equal(admin.opensLast24, 206);
+  assert.equal(admin.codes.length, 2);
+  const replaced = await panelData(env, {
     id: "new-resident",
     tenant_id: "a",
     role: "user",
   });
-  assert.equal(replaced.sent, 0);
-  assert.equal(replaced.lastSent, null);
+  assert.equal(replaced.opensLast24, 0);
+  assert.equal(replaced.logs.length, 0);
   const response = await worker.fetch(
-    new Request("https://app.test/t/alpha/admin/dashboard"),
+    new Request("https://app.test/t/alpha/admin/panel"),
     env,
     { waitUntil() {} },
   );

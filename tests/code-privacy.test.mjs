@@ -1,3 +1,5 @@
+import { listCodes } from "../src/lib/codes.js";
+import { seedCode } from "./code-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -24,7 +26,7 @@ test("own codes remain complete; other codes and audit details are masked", asyn
     const result = await protectCodes(
       env,
       {
-        passes: [row],
+        codes: [row],
         logs: [row],
         audit: [
           { details: JSON.stringify({ tenantId: "building", code: "123456" }) },
@@ -34,13 +36,13 @@ test("own codes remain complete; other codes and audit details are masked", asyn
     );
     assert.ok(!JSON.stringify(result).includes("123456"));
     assert.ok(!JSON.stringify(result).includes("hidden"));
-    assert.equal(result.passes[0].code, "12••56");
-    assert.equal(result.passes[0].codeMasked, true);
+    assert.equal(result.codes[0].code, "12••56");
+    assert.equal(result.codes[0].codeMasked, true);
     assert.equal(
       (
         await resolveCodeBody(
           env,
-          { codeRef: result.passes[0].codeRef },
+          { codeRef: result.codes[0].codeRef },
           viewer,
           "building",
         )
@@ -99,13 +101,13 @@ test("HTTP panels, history and search hide foreign credentials; opaque revocatio
   const resident = sqlite
     .prepare("SELECT * FROM users WHERE role='user'")
     .get();
-  const own = await db.createCode(e, master, {
+  const own = await seedCode(e, master, {
       gateId: gate.id,
       label: "Own",
       days: 1,
       singleUse: false,
     }),
-    foreign = await db.createCode(e, resident, {
+    foreign = await seedCode(e, resident, {
       gateId: gate.id,
       label: "Foreign",
       days: 1,
@@ -131,7 +133,7 @@ test("HTTP panels, history and search hide foreign credentials; opaque revocatio
       e,
       {},
     );
-  for (const path of ["panel", "codes", "passes", "logs"]) {
+  for (const path of ["panel", "codes"]) {
     const response = await request(path),
       text = await response.text();
     assert.equal(response.status, 200);
@@ -143,17 +145,17 @@ test("HTTP panels, history and search hide foreign credentials; opaque revocatio
   const hidden = codes.find((c) => c.label === "Foreign");
   assert.ok(hidden.codeRef);
   for (const key of ["query", "search"]) {
-    const found = await db.listCodes(e, tenant, master, {
+    const found = await listCodes(e, tenant, master, {
       [key]: foreign.code,
     });
     assert.equal(found.length, 0);
   }
   assert.equal(
-    (await request("revoke-code", { code: foreign.code })).status,
+    (await request("codes/revoke", { code: foreign.code })).status,
     400,
   );
   assert.equal(
-    (await request("revoke-code", { codeRef: hidden.codeRef })).status,
+    (await request("codes/revoke", { codeRef: hidden.codeRef })).status,
     200,
   );
   assert.equal(

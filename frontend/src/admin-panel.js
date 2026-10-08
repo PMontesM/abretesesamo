@@ -106,13 +106,6 @@ export function buildingAdmin(resident, pass) {
         this,
         ["inicio", "residentes", "pases", "actividad", "accesos", "profile"],
         "inicio",
-        {
-          users: "residentes",
-          codes: "pases",
-          passes: "pases",
-          logs: "actividad",
-          gates: "accesos",
-        },
       );
       await this.refresh();
       this._clock = setInterval(() => {
@@ -371,7 +364,7 @@ export function buildingAdmin(resident, pass) {
       const a = this.actionConfirmation;
       const done = await this.run(async () => {
         await api(
-          a.kind === "user" ? "/admin/delete-user" : "/admin/revoke-code",
+          a.kind === "user" ? "/admin/delete-user" : "/admin/codes/revoke",
           a.kind === "user"
             ? { userId: a.id }
             : { code: a.code, codeRef: a.codeRef },
@@ -398,9 +391,9 @@ export function buildingAdmin(resident, pass) {
           gateId: this.codeGate,
           page: String(page),
         });
-        const result = await api("/admin/passes?" + q);
+        const result = await api("/admin/codes?" + q);
         if (revision !== this.codeRevision) return;
-        const items = result.passes.map(pass);
+        const items = result.codes.map(pass);
         this.listedPasses = more ? [...this.listedPasses, ...items] : items;
         this.codePage = page;
         this.codeMore = items.length === 100;

@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import assert from "node:assert/strict";
 
 import { createRequire } from "node:module";
@@ -12,7 +13,7 @@ import { makeDB } from "./db.mjs";
 
 import * as db from "../src/lib/db.js";
 
-import { createPass } from "../src/lib/passes.js";
+import { createCode } from "../src/lib/codes.js";
 
 import { hashSecret } from "../src/lib/security.js";
 
@@ -58,7 +59,7 @@ await db.createUser(env, tenantId, {
 
 const user = sqlite.prepare("SELECT * FROM users WHERE username='pablo'").get();
 
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: gate.id,
   label: "Visita de María",
   expiresAt: Date.now() + 2 * 3600000,
@@ -66,7 +67,7 @@ await db.createCode(env, user, {
   visit: true,
 });
 
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: parking,
   label: "Entrega de supermercado",
   expiresAt: Date.now() + 30 * 60000,
@@ -345,7 +346,7 @@ try {
     await visible(id);
   }
 
-  await page.goto("https://app.test/t/aurora/admin?view=users");
+  await page.goto("https://app.test/t/aurora/admin?section=residentes");
   await visible("residentes");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Abrir menú", exact: true }).click();

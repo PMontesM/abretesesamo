@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -5,7 +6,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { makeDB } from "./db.mjs";
 import * as db from "../src/lib/db.js";
-import { createPass } from "../src/lib/passes.js";
+import { createCode } from "../src/lib/codes.js";
 import { hashSecret } from "../src/lib/security.js";
 const { default: worker } = await import(
   process.env.WORKER_BUNDLE
@@ -41,14 +42,14 @@ await db.createUser(env, tenantId, {
   gateIds: [gate.id, parking],
 });
 const user = sqlite.prepare("SELECT * FROM users WHERE username='pablo'").get();
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: gate.id,
   label: "Visita de María",
   expiresAt: Date.now() + 2 * 3600000,
   singleUse: false,
   visit: true,
 });
-await db.createCode(env, user, {
+await seedCode(env, user, {
   gateId: parking,
   label: "Entrega de supermercado",
   expiresAt: Date.now() + 30 * 60000,
@@ -252,7 +253,7 @@ try {
     .prepare("SELECT * FROM users WHERE username='temporal'")
     .get();
   assert.ok(neighbor);
-  const neighborCode = await createPass(env, neighbor, {
+  const neighborCode = await createCode(env, neighbor, {
     label: "Prueba de permisos",
     mode: "unlimited",
     gateIds: [gate.id, parking],
@@ -532,10 +533,9 @@ try {
     .waitFor();
   assert.equal(commands.at(-1), "https://device.test/parking");
   assert.equal(commands.length, 2);
-  const visit = await createPass(env, user, {
+  const visit = await createCode(env, user, {
     label: "Visita multiacceso",
     mode: "visit",
-    minutes: 30,
     gateIds: [gate.id, parking],
   });
   await page.goto("https://app.test/t/aurora?code=" + visit.code);

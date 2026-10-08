@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { makeDB } from "./db.mjs";
 import * as db from "../src/lib/db.js";
 import {
-  createPass,
-  listPasses,
-  extendPass,
+  createCode,
+  listCodes,
+  extendCode,
   visitorGates,
-} from "../src/lib/passes.js";
+} from "../src/lib/codes.js";
 async function setup() {
   const { sqlite, db: DB } = makeDB(),
     env = { DB };
@@ -36,13 +36,15 @@ async function setup() {
 }
 test("pase multiacceso: selección autorizada, reserva compartida y revocación al quitar permiso secundario", async () => {
   const { sqlite, env, user, tenant, g1, g2 } = await setup();
-  const { code } = await createPass(env, user, {
+  const { code } = await createCode(env, user, {
     label: "Entrega",
-    category: "Entrega",
-    minutes: 120,
+    days: 1,
     gateIds: [g1, g2],
   });
-  assert.equal((await listPasses(env, user))[0].access.length, 2);
+  assert.equal(
+    (await listCodes(env, user.tenant_id, user))[0].access.length,
+    2,
+  );
   assert.equal((await visitorGates(env, tenant, code)).length, 2);
   assert.equal(await db.claimCode(env, tenant, code, "ajeno"), null);
   const row = await db.claimCode(env, tenant, code, g2);
@@ -58,9 +60,9 @@ test("pase multiacceso: selección autorizada, reserva compartida y revocación 
 });
 test("cambiar la integración secundaria revoca todo el pase; creación parcial revierte", async () => {
   const { sqlite, env, user, tenant, g1, g2 } = await setup();
-  const { code } = await createPass(env, user, {
+  const { code } = await createCode(env, user, {
     label: "Visita",
-    minutes: 30,
+    days: 1,
     gateIds: [g1, g2],
   });
   await db.saveGate(env, tenant, {
@@ -77,15 +79,15 @@ test("cambiar la integración secundaria revoca todo el pase; creación parcial 
   );
   const before = sqlite.prepare("SELECT COUNT(*) n FROM codes").get().n;
   await assert.rejects(
-    createPass(env, user, { label: "Fail", minutes: 30, gateIds: [g1, g2] }),
+    createCode(env, user, { label: "Fail", days: 1, gateIds: [g1, g2] }),
   );
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM codes").get().n, before);
 });
 test("extensión: vence pronto, dueño, no visita, no duplicación y no resucita revocados", async () => {
   const { sqlite, env, user, g1 } = await setup();
-  const { code } = await createPass(env, user, {
+  const { code } = await createCode(env, user, {
     label: "Servicio",
-    minutes: 30,
+    days: 1,
     gateIds: [g1],
   });
   const expires = Date.now() + 300000;
@@ -93,10 +95,10 @@ test("extensión: vence pronto, dueño, no visita, no duplicación y no resucita
     .prepare("UPDATE codes SET expires_at=? WHERE code=?")
     .run(expires, code);
   await assert.rejects(
-    extendPass(env, { ...user, id: "another" }, { code, expiresAt: expires }),
+    extendCode(env, { ...user, id: "another" }, { code, expiresAt: expires }),
   );
-  await extendPass(env, user, { code, expiresAt: expires });
-  await assert.rejects(extendPass(env, user, { code, expiresAt: expires }));
+  await extendCode(env, user, { code, expiresAt: expires });
+  await assert.rejects(extendCode(env, user, { code, expiresAt: expires }));
   assert.equal(
     sqlite.prepare("SELECT expires_at FROM codes WHERE code=?").get(code)
       .expires_at,
@@ -105,18 +107,17 @@ test("extensión: vence pronto, dueño, no visita, no duplicación y no resucita
   sqlite
     .prepare("UPDATE codes SET status='revoked',expires_at=? WHERE code=?")
     .run(expires, code);
-  await assert.rejects(extendPass(env, user, { code, expiresAt: expires }));
+  await assert.rejects(extendCode(env, user, { code, expiresAt: expires }));
   sqlite
     .prepare("UPDATE codes SET status='active',visit_mode=1 WHERE code=?")
     .run(code);
-  await assert.rejects(extendPass(env, user, { code, expiresAt: expires }));
+  await assert.rejects(extendCode(env, user, { code, expiresAt: expires }));
 });
 test("visita multiacceso comparte los mismos diez minutos entre portones", async () => {
   const { sqlite, env, user, tenant, g1, g2 } = await setup();
-  const { code } = await createPass(env, user, {
+  const { code } = await createCode(env, user, {
     label: "Visita",
     mode: "visit",
-    minutes: 30,
     gateIds: [g1, g2],
   });
   const a = await db.claimCode(env, tenant, code, g1);
@@ -133,30 +134,31 @@ test("visita multiacceso comparte los mismos diez minutos entre portones", async
   );
 });
 
-test("fecha personalizada conserva el límite y rechaza fechas pasadas o fuera de rango", async () => {
-  const { sqlite, env, user, g1 } = await setup();
-  const expiresAt = Date.now() + 3 * 86400000;
-  const { code } = await createPass(env, user, {
-    label: "Programada",
-    mode: "visit",
-    expiresAt,
-    gateIds: [g1],
-  });
-  const row = sqlite
-    .prepare("SELECT expires_at,visit_mode FROM codes WHERE code=?")
-    .get(code);
-  assert.equal(row.expires_at, expiresAt);
-  assert.equal(row.visit_mode, 1);
-  for (const invalid of [
-    Date.now() - 1000,
-    Date.now() + 3651 * 86400000,
-    "mañana",
+test("creación usa únicamente tipo y días y rechaza contratos retirados", async () => {
+  const { env, user, g1 } = await setup();
+  for (const extra of [
+    { expiresAt: Date.now() + 86400000 },
+    { minutes: 30 },
+    { category: "Entrega" },
+    { singleUse: true },
+    { gateId: g1 },
+    { visit: true },
   ])
     await assert.rejects(
-      createPass(env, user, {
-        label: "Inválida",
-        mode: "visit",
-        expiresAt: invalid,
+      createCode(env, user, {
+        label: "Inválido",
+        mode: "repeat",
+        days: 1,
+        gateIds: [g1],
+        ...extra,
+      }),
+    );
+  for (const mode of ["visit", "unlimited"])
+    await assert.rejects(
+      createCode(env, user, {
+        label: "Inválido",
+        mode,
+        days: 2,
         gateIds: [g1],
       }),
     );
@@ -164,7 +166,7 @@ test("fecha personalizada conserva el límite y rechaza fechas pasadas o fuera d
 
 test("vigencias en días: visita inicia en siete días y reutilizable admite de uno a treinta", async () => {
   const { sqlite, env, user, g1 } = await setup();
-  const visit = await createPass(env, user, {
+  const visit = await createCode(env, user, {
     label: "Visita",
     mode: "visit",
     gateIds: [g1],
@@ -172,7 +174,7 @@ test("vigencias en días: visita inicia en siete días y reutilizable admite de 
   let row = sqlite.prepare("SELECT * FROM codes WHERE code=?").get(visit.code);
   assert.equal(row.expires_at - row.created_at, 7 * 86400000);
   for (const days of [1, 7, 30]) {
-    const p = await createPass(env, user, {
+    const p = await createCode(env, user, {
       label: "Temporal",
       mode: "repeat",
       days,
@@ -183,7 +185,7 @@ test("vigencias en días: visita inicia en siete días y reutilizable admite de 
   }
   for (const days of [0, 31, 1.5])
     await assert.rejects(
-      createPass(env, user, {
+      createCode(env, user, {
         label: "Inválido",
         mode: "repeat",
         days,
@@ -195,7 +197,7 @@ test("vigencias en días: visita inicia en siete días y reutilizable admite de 
 test("filtros de administración antes de paginar: dueño, acceso secundario, búsqueda y aislamiento", async () => {
   const { sqlite, env, user, tenant, g1, g2 } = await setup(),
     master = sqlite.prepare("SELECT * FROM users WHERE role='master'").get();
-  const target = await createPass(env, user, {
+  const target = await createCode(env, user, {
     label: "Entrega especial",
     mode: "unlimited",
     gateIds: [g1, g2],
@@ -214,9 +216,13 @@ test("filtros de administración antes de paginar: dueño, acceso secundario, b�
         "Otro",
         Date.now() + i + 1000,
       );
-  assert.equal((await listPasses(env, master, { status: "" })).length, 100);
   assert.equal(
-    (await listPasses(env, master, { status: "", page: 1 })).length,
+    (await listCodes(env, master.tenant_id, master, { status: "" })).length,
+    100,
+  );
+  assert.equal(
+    (await listCodes(env, master.tenant_id, master, { status: "", page: 1 }))
+      .length,
     6,
   );
   for (const options of [
@@ -227,16 +233,27 @@ test("filtros de administración antes de paginar: dueño, acceso secundario, b�
     { query: user.username },
   ])
     assert.deepEqual(
-      (await listPasses(env, master, options)).map((p) => p.code),
+      (await listCodes(env, master.tenant_id, master, options)).map(
+        (p) => p.code,
+      ),
       [target.code],
     );
   assert.equal(
-    (await listPasses(env, user, { ownerId: master.id, status: "" })).length,
+    (
+      await listCodes(env, user.tenant_id, user, {
+        ownerId: master.id,
+        status: "",
+      })
+    ).length,
     0,
   );
   assert.equal(
-    (await listPasses(env, master, { ownerId: user.id, gateId: "foreign" }))
-      .length,
+    (
+      await listCodes(env, master.tenant_id, master, {
+        ownerId: user.id,
+        gateId: "foreign",
+      })
+    ).length,
     0,
   );
   const other = await db.createTenant(env, {
@@ -252,7 +269,7 @@ test("filtros de administración antes de paginar: dueño, acceso secundario, b�
       .get(other);
   assert.equal(
     (
-      await listPasses(env, otherMaster, {
+      await listCodes(env, otherMaster.tenant_id, otherMaster, {
         query: target.code,
         ownerId: user.id,
         gateId: g2,
@@ -260,5 +277,7 @@ test("filtros de administración antes de paginar: dueño, acceso secundario, b�
     ).length,
     0,
   );
-  await assert.rejects(listPasses(env, master, { query: "x".repeat(101) }));
+  await assert.rejects(
+    listCodes(env, master.tenant_id, master, { query: "x".repeat(101) }),
+  );
 });

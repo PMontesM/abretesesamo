@@ -1,3 +1,4 @@
+import { seedCode } from "./code-fixture.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
@@ -27,7 +28,7 @@ const tenant = await db.createTenant(env, {
 });
 const user = sqlite.prepare("SELECT * FROM users").get(),
   gate = sqlite.prepare("SELECT * FROM gates").get();
-const pass = await db.createCode(env, user, {
+const pass = await seedCode(env, user, {
   gateId: gate.id,
   label: "Prueba",
   days: 1,

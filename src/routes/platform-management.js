@@ -1,3 +1,4 @@
+import { listCodes } from "../lib/codes.js";
 import { Hono } from "hono";
 import {
   platformJSON,
@@ -6,7 +7,6 @@ import {
 } from "../middleware/access.js";
 import { issueRecovery } from "../lib/account-recovery.js";
 import { normalizePhone } from "../lib/account-provision.js";
-import { clearAccountCookie } from "../lib/account-session.js";
 import { resolveCodeBody } from "../lib/code-privacy.js";
 import { superPanel } from "../lib/super-panel.js";
 import * as operations from "../lib/operations.js";
@@ -17,24 +17,9 @@ import { getPlatformAdminHTML } from "../html/platform.js";
 export const router = new Hono();
 router.get("/admin", async (c) => {
   const admin = c.get("admin");
-  return c.html(
-    getPlatformAdminHTML(admin, c.req.query("view"), c.req.query("tenantId")),
-  );
+  return c.html(getPlatformAdminHTML(admin));
 });
-router.post("/logout", async (c) => {
-  const env = c.env;
-  const admin = c.get("admin");
 
-  await env.DB.prepare(
-    "UPDATE accounts SET session_version=session_version+1 WHERE id=?",
-  )
-    .bind(admin.account_id)
-    .run();
-  return Response.json(
-    { ok: true },
-    { headers: { "Set-Cookie": clearAccountCookie() } },
-  );
-});
 router.get("/api/panel", async (c) => {
   const env = c.env;
 
@@ -44,10 +29,7 @@ router.get("/api/reports", async (c) => {
   const env = c.env;
   return platformJSON(c, { report: await db.reports(env) });
 });
-router.get("/api/audit", async (c) => {
-  const env = c.env;
-  return platformJSON(c, { log: await db.listAudit(env) });
-});
+
 router.get("/api/operations", platformTenant, async (c) => {
   const env = c.env;
   const tenantId = c.get("tenantId");
@@ -63,7 +45,7 @@ router.get("/api/codes", platformTenant, async (c) => {
 
   const tenantId = c.get("tenantId");
   return platformJSON(c, {
-    codes: await db.listCodes(env, tenantId, null, c.req.query()),
+    codes: await listCodes(env, tenantId, null, c.req.query()),
   });
 });
 router.post("/api/users/recovery", parseBody, platformTenant, async (c) => {

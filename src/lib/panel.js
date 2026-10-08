@@ -1,6 +1,6 @@
 import { recoverAccess } from "./access-recovery.js";
 import * as db from "./db.js";
-import { listPasses } from "./passes.js";
+import { listCodes } from "./codes.js";
 export async function panelData(env, user, offset = 0) {
   await recoverAccess(env, user.tenant_id);
   offset = Number(offset);
@@ -8,9 +8,9 @@ export async function panelData(env, user, offset = 0) {
   const now = Date.now(),
     midnight =
       Math.floor((now - offset * 60000) / 86400000) * 86400000 + offset * 60000;
-  const [allowed, passes, history] = await Promise.all([
+  const [allowed, codes, history] = await Promise.all([
     db.allowedGates(env, user),
-    listPasses(env, user, { status: "current" }),
+    listCodes(env, user.tenant_id, user, { status: "current" }),
     db.listLogs(env, user.tenant_id, user),
   ]);
   const gates = allowed.map((g) => ({
@@ -21,7 +21,7 @@ export async function panelData(env, user, offset = 0) {
     connection_state: g.connection_state,
     connection_checked_at: g.connection_checked_at,
   }));
-  const result = { serverNow: now, gates, passes, ...history };
+  const result = { serverNow: now, gates, codes, ...history };
   if (user.role !== "master") return result;
   const [summary, byHour, observations] = await Promise.all([
     env.DB.prepare(

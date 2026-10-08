@@ -4,13 +4,9 @@ import {
 } from "./shared-management-rows.js";
 import { requestJSON } from "./request.js";
 // Shared browser UI. All database content uses textContent; each action captures its own building ID.
-export function mountManagement(root, config, options = {}) {
-  const $ = (id) => document.getElementById(id),
-    view = root,
-    nav = null,
+export function mountManagement(root, options = {}) {
+  const view = root,
     notice = document.createElement("div");
-  const platform = config.mode === "platform",
-    base = platform ? "/platform" : "/t/" + (config.tenant?.slug || "");
   let revision = 0;
   const codeFilters = new Map();
   const el = (tag, text, cls) => {
@@ -327,12 +323,11 @@ export function mountManagement(root, config, options = {}) {
     document.body.append(d);
     d.showModal();
   }
-  async function codeTable(parent, tenant, platformView = false) {
-    const path = platformView
-      ? "/platform/api/codes?tenantId=" + encodeURIComponent(tenant.id)
-      : base + "/admin/codes";
+  async function codeTable(parent, tenant) {
+    const path =
+      "/platform/api/codes?tenantId=" + encodeURIComponent(tenant.id);
     const outer = parent,
-      key = (platformView ? "platform:" : "tenant:") + tenant.id;
+      key = "platform:" + tenant.id;
     let filters = codeFilters.get(key) || {
       page: 0,
       search: "",
@@ -383,7 +378,7 @@ export function mountManagement(root, config, options = {}) {
         filters.search && state.value === "current" ? "" : state.value;
       apply.disabled = true;
       try {
-        await codeTable(outer, tenant, platformView);
+        await codeTable(outer, tenant);
       } catch (e) {
         message(e.message, true);
       } finally {
@@ -431,13 +426,12 @@ export function mountManagement(root, config, options = {}) {
                     ))
                   )
                     return;
-                  await api(
-                    platformView
-                      ? "/platform/api/codes/revoke"
-                      : base + "/admin/revoke-code",
-                    { tenantId: tenant.id, code: c.code, codeRef: c.codeRef },
-                  );
-                  await codeTable(outer, tenant, platformView);
+                  await api("/platform/api/codes/revoke", {
+                    tenantId: tenant.id,
+                    code: c.code,
+                    codeRef: c.codeRef,
+                  });
+                  await codeTable(outer, tenant);
                 },
                 "danger",
               ),
@@ -452,19 +446,18 @@ export function mountManagement(root, config, options = {}) {
                 "Revocar",
                 async () => {
                   if (!(await ask("¿Revocar este código?"))) return;
-                  await api(
-                    platformView
-                      ? "/platform/api/codes/revoke"
-                      : base + "/admin/revoke-code",
-                    { tenantId: tenant.id, code: c.code, codeRef: c.codeRef },
-                  );
+                  await api("/platform/api/codes/revoke", {
+                    tenantId: tenant.id,
+                    code: c.code,
+                    codeRef: c.codeRef,
+                  });
                   await building(tenant);
                 },
                 "danger",
               ),
             );
           }
-          if (platformView && ["pending", "uncertain"].includes(c.status)) {
+          if (["pending", "uncertain"].includes(c.status)) {
             buttons.push(
               button("Resolver", () =>
                 dialog(
@@ -523,7 +516,7 @@ export function mountManagement(root, config, options = {}) {
         "Página anterior",
         async () => {
           filters.page--;
-          await codeTable(outer, tenant, platformView);
+          await codeTable(outer, tenant);
         },
         "secondary",
       ),
@@ -531,7 +524,7 @@ export function mountManagement(root, config, options = {}) {
         "Página siguiente",
         async () => {
           filters.page++;
-          await codeTable(outer, tenant, platformView);
+          await codeTable(outer, tenant);
         },
         "secondary",
       );
@@ -563,16 +556,12 @@ export function mountManagement(root, config, options = {}) {
       "Cerrar",
     );
   }
-  async function userPanel(tenant, platformView = false) {
+  async function userPanel(tenant) {
     const s = section("Usuarios de " + tenant.name),
-      suffix = platformView ? "?tenantId=" + encodeURIComponent(tenant.id) : "";
+      suffix = "?tenantId=" + encodeURIComponent(tenant.id);
     const [{ users }, { gates }] = await Promise.all([
-      api(
-        platformView ? "/platform/api/users" + suffix : base + "/admin/users",
-      ),
-      api(
-        platformView ? "/platform/api/gates" + suffix : base + "/admin/gates",
-      ),
+      api("/platform/api/users" + suffix),
+      api("/platform/api/gates" + suffix),
     ]);
     const refresh = () => building(tenant);
     const search = input(s, "Buscar usuario", "search", "", false);
@@ -604,18 +593,13 @@ export function mountManagement(root, config, options = {}) {
             permissions: gateChecks(f, gates),
           }),
           async (a) => {
-            await api(
-              platformView
-                ? "/platform/api/users"
-                : base + "/admin/create-user",
-              {
-                tenantId: tenant.id,
-                username: a.name.value,
-                phone: a.phone.value,
-                secret: a.secret.value,
-                gateIds: a.permissions(),
-              },
-            );
+            await api("/platform/api/users", {
+              tenantId: tenant.id,
+              username: a.name.value,
+              phone: a.phone.value,
+              secret: a.secret.value,
+              gateIds: a.permissions(),
+            });
             await refresh();
             welcomeUser(
               tenant,
@@ -705,12 +689,11 @@ export function mountManagement(root, config, options = {}) {
                     return gateChecks(f, gates, u.gateIds);
                   },
                   async (getIds) => {
-                    await api(
-                      platformView
-                        ? "/platform/api/users/permissions"
-                        : base + "/admin/users/permissions",
-                      { tenantId: tenant.id, userId: u.id, gateIds: getIds() },
-                    );
+                    await api("/platform/api/users/permissions", {
+                      tenantId: tenant.id,
+                      userId: u.id,
+                      gateIds: getIds(),
+                    });
                     await refresh();
                   },
                 ),
@@ -727,12 +710,10 @@ export function mountManagement(root, config, options = {}) {
                   ))
                 )
                   return;
-                await api(
-                  platformView
-                    ? "/platform/api/users/delete"
-                    : base + "/admin/delete-user",
-                  { tenantId: tenant.id, userId: u.id },
-                );
+                await api("/platform/api/users/delete", {
+                  tenantId: tenant.id,
+                  userId: u.id,
+                });
                 await refresh();
               },
               "danger",
@@ -748,7 +729,7 @@ export function mountManagement(root, config, options = {}) {
     );
     return s;
   }
-  function supportDialog(tenant, platformView) {
+  function supportDialog(tenant) {
     dialog(
       "Contacto de ayuda",
       (f) => {
@@ -767,10 +748,10 @@ export function mountManagement(root, config, options = {}) {
         );
       },
       async (phone) => {
-        const d = await api(
-          platformView ? "/platform/api/support" : base + "/admin/support",
-          { tenantId: tenant.id, phone: phone.value },
-        );
+        const d = await api("/platform/api/support", {
+          tenantId: tenant.id,
+          phone: phone.value,
+        });
         tenant.supportPhone = tenant.support_phone = d.phone;
         message("Contacto de ayuda guardado.");
       },
@@ -1226,11 +1207,7 @@ export function mountManagement(root, config, options = {}) {
         head = section(tenant.name);
       head.append(
         el("p", "Edificio: " + tenant.slug),
-        button(
-          "Configurar ayuda",
-          () => supportDialog(tenant, true),
-          "secondary",
-        ),
+        button("Configurar ayuda", () => supportDialog(tenant), "secondary"),
         button(
           tenant.status === "active"
             ? "Suspender edificio"
@@ -1386,10 +1363,10 @@ export function mountManagement(root, config, options = {}) {
       );
       if (options.buildingTab === "review") container.append(pendingSection);
       if (options.buildingTab === "users")
-        container.append(await userPanel(tenant, true));
+        container.append(await userPanel(tenant));
       if (options.buildingTab === "codes") {
         const codeSection = section("Códigos de " + tenant.name);
-        await codeTable(codeSection, tenant, true);
+        await codeTable(codeSection, tenant);
         container.append(codeSection);
       }
       return container;

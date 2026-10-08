@@ -1,3 +1,4 @@
+import { logoutSession } from "./session-renewal.js";
 import { mountManagement } from "./management.js";
 import { initNavigation, navigate, destroyNavigation } from "./navigation.js";
 import { api, config, date } from "./api.js";
@@ -280,7 +281,6 @@ export function superApp() {
         this.$nextTick(() => {
           this._managementDispose = mountManagement(
             document.getElementById("management-root"),
-            { ...config, mode: "platform" },
             {
               mode: id,
               buildingTab:
@@ -297,7 +297,7 @@ export function superApp() {
     },
     async logout() {
       try {
-        await api("/platform/logout", {});
+        await logoutSession();
         location.href = "/login";
       } catch (e) {
         this.error = e.message;

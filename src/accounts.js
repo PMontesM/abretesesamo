@@ -2,7 +2,7 @@ import { requireAccount } from "./middleware/access.js";
 import { redeemRecovery } from "./lib/account-recovery.js";
 import { normalizePhone } from "./lib/account-provision.js";
 import { Hono } from "hono";
-import { visitorGates } from "./lib/passes.js";
+import { visitorGates } from "./lib/codes.js";
 import {
   accountSession,
   accountCookie,

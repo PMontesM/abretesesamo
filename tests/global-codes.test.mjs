@@ -1,10 +1,11 @@
+import { seedCode } from "./code-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeDB } from "./db.mjs";
 import * as db from "../src/lib/db.js";
-import { createPass } from "../src/lib/passes.js";
+import { createCode } from "../src/lib/codes.js";
 import worker from "../src/index.js";
-test("global uniqueness retries cross-building collisions in both creation paths; visitor lookup never opens", async (t) => {
+test("global uniqueness retries cross-building collisions; visitor lookup never opens", async (t) => {
   const { sqlite, db: DB } = makeDB(),
     env = { DB };
   try {
@@ -29,19 +30,19 @@ test("global uniqueness retries cross-building collisions in both creation paths
       a[0] = values.shift();
       return a;
     });
-    const a = await db.createCode(env, users[0], {
+    const a = await seedCode(env, users[0], {
       gateId: gate(users[0]),
       label: "A",
       days: 1,
       singleUse: false,
     });
-    const b = await db.createCode(env, users[1], {
+    const b = await seedCode(env, users[1], {
       gateId: gate(users[1]),
       label: "B",
       days: 1,
       singleUse: false,
     });
-    const c = await createPass(env, users[1], {
+    const c = await createCode(env, users[1], {
       gateIds: [gate(users[1])],
       label: "C",
       mode: "visit",

@@ -1,12 +1,9 @@
-export function initNavigation(panel, pages, fallback, aliases = {}) {
+export function initNavigation(panel, pages, fallback) {
   panel._pages = pages;
   panel._defaultPage = fallback;
   const read = () => {
     const url = new URL(location.href);
-    const candidate =
-      url.searchParams.get("section") ||
-      aliases[url.searchParams.get("view")] ||
-      url.hash.slice(1);
+    const candidate = url.searchParams.get("section");
     navigate(panel, pages.includes(candidate) ? candidate : fallback, false);
   };
   panel._navigationListener = read;
@@ -21,7 +18,6 @@ export function navigate(panel, id, push = true) {
   panel.drawer = false;
   if (push) {
     const url = new URL(location.href);
-    url.searchParams.delete("view");
     url.searchParams.set("section", id);
     url.hash = "";
     if (url.href !== location.href) history.pushState(null, "", url);

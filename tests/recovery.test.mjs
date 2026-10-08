@@ -96,7 +96,7 @@ test("recuperación requiere superadmin, prueba de contraseña y enlace de un so
     ]);
     assert.deepEqual(replies.map((r) => r.status).sort(), [200, 400]);
     assert.equal(
-      (await s.req("/t/prueba/admin/gates", undefined, userCookie)).status,
+      (await s.req("/t/prueba/admin/panel", undefined, userCookie)).status,
       401,
     );
     assert.ok(
@@ -145,7 +145,7 @@ test("teléfono repetido es error legible y cambiarlo invalida sesiones y enlace
       200,
     );
     assert.equal(
-      (await s.req("/t/prueba/admin/gates", undefined, userCookie)).status,
+      (await s.req("/t/prueba/admin/panel", undefined, userCookie)).status,
       401,
     );
     assert.equal(

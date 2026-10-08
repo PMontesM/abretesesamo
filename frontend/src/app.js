@@ -1,5 +1,5 @@
 import { setupInstall } from "./install-app.js";
-import { renewSession } from "./session-renewal.js";
+import { renewSession, logoutSession } from "./session-renewal.js";
 import { profilePanel } from "./profile.js";
 import { initNavigation, navigate, destroyNavigation } from "./navigation.js";
 import { buildingPicker } from "./building-picker.js";
@@ -23,11 +23,6 @@ const merge = (target, ...parts) => {
     Object.defineProperties(target, Object.getOwnPropertyDescriptors(p));
   return target;
 };
-const types = {
-  Visita: "fa-solid fa-user",
-  Entrega: "fa-solid fa-motorcycle",
-  Servicio: "fa-solid fa-broom",
-};
 const pass = (c) => ({
   id: c.codeRef || c.code,
   codeRef: c.codeRef,
@@ -42,7 +37,7 @@ const pass = (c) => ({
       : c.expires_at
         ? "Con vigencia"
         : "Permanente",
-  icon: types[c.category] || types.Visita,
+  icon: "fa-solid fa-key",
   access: c.access,
   createdAt: c.visit_started_at || c.created_at,
   expiresAt: c.expires_at,
@@ -60,8 +55,6 @@ const common = {
   loading: true,
   busy: false,
   now: Date.now(),
-  types,
-  typeNames: Object.keys(types),
   get initials() {
     return this.user.username.slice(0, 2).toUpperCase();
   },
@@ -82,7 +75,7 @@ const common = {
   },
   async logout() {
     await this.run(async () => {
-      await api("/admin/logout", {});
+      await logoutSession();
       location.href = "/login";
     });
   },
@@ -132,7 +125,6 @@ const common = {
       this,
       ["accesos", "pases", "actividad", "profile"],
       "accesos",
-      { codes: "pases", logs: "actividad" },
     );
     await this.refresh();
     this._clock = setInterval(() => {
@@ -162,7 +154,7 @@ const common = {
     if (this.busy) return;
     this.busy = true;
     const done = await this.run(async () => {
-      await api("/admin/revoke-code", { code: p.code || p.id });
+      await api("/admin/codes/revoke", { code: p.code || p.id });
       return true;
     });
     this.busy = false;
@@ -179,18 +171,6 @@ function resident() {
     },
     set passName(v) {
       this.form.name = v;
-    },
-    get passCategory() {
-      return this.form.type;
-    },
-    set passCategory(v) {
-      this.form.type = v;
-    },
-    get passMinutes() {
-      return this.form.mins;
-    },
-    set passMinutes(v) {
-      this.form.mins = v;
     },
     get passMode() {
       return this.form.mode;
@@ -215,9 +195,9 @@ function resident() {
     activityGate: "",
     activityResult: "",
     doors: [],
-    passes: [],
+    codes: [],
     activity: [],
-    form: { name: "", type: "Visita", mins: 120, mode: "visit", doors: [] },
+    form: { name: "", mode: "visit", doors: [] },
     load(data) {
       this.now = data.serverNow;
       const old = new Map(this.doors.map((d) => [d.id, d]));
@@ -248,7 +228,7 @@ function resident() {
         last: data.logs.find((l) => l.gate_id === g.id && l.outcome === "sent")
           ?.at,
       }));
-      this.passes = data.passes.map(pass);
+      this.codes = data.codes.map(pass);
       this.activity = data.logs.map((l) => ({
         gateId: l.gate_id,
         outcome: l.outcome,
@@ -278,7 +258,7 @@ function resident() {
       return ["active", "pending", "uncertain"].includes(p.status);
     },
     get livePasses() {
-      return this.passes.filter(
+      return this.codes.filter(
         (p) =>
           ["pending", "uncertain"].includes(p.status) ||
           (p.status === "active" && (!p.expiresAt || p.expiresAt > this.now)),
@@ -407,8 +387,6 @@ function resident() {
       this.customDays = 1;
       this.form = {
         name: "",
-        type: "Visita",
-        mins: 120,
         mode: "visit",
         doors: this.doors.length === 1 ? [this.doors[0].id] : [],
       };
@@ -427,7 +405,7 @@ function resident() {
     },
     deadlineBody() {
       if (this.form.mode === "unlimited") return {};
-      if (this.form.mode === "visit") return { days: 7 };
+      if (this.form.mode === "visit") return {};
       const days =
         this.durationDays === "custom"
           ? Number(this.customDays)
@@ -462,14 +440,13 @@ function resident() {
         ]),
       ]);
     },
-    async createPass() {
+    async createCode() {
       if (this.busy) return;
       this.formError = "";
       this.busy = true;
       try {
-        const created = await api("/admin/passes", {
+        const created = await api("/admin/codes", {
           label: this.form.name,
-          category: this.form.type,
           mode: this.form.mode,
           gateIds: this.form.doors,
           ...this.deadlineBody(),
@@ -478,7 +455,7 @@ function resident() {
         this.busy = false;
         await this.refresh();
         this.resultCard =
-          this.passes.find((p) => p.code === created.code) || null;
+          this.codes.find((p) => p.code === created.code) || null;
       } catch (e) {
         this.formError = e.message;
         this.busy = false;
@@ -488,7 +465,7 @@ function resident() {
       if (this.busy) return;
       this.busy = true;
       const ok = await this.run(async () => {
-        await api("/admin/passes/extend", {
+        await api("/admin/codes/extend", {
           code: p.code,
           expiresAt: p.expiresAt,
         });

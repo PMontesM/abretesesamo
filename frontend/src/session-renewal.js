@@ -1,3 +1,4 @@
+import { requestJSON } from "./request.js";
 let last = 0,
   pending = false;
 // Renew on actual foreground use, at most once per hour; no background polling.
@@ -22,4 +23,8 @@ export async function renewSession() {
   } finally {
     pending = false;
   }
+}
+
+export async function logoutSession() {
+  return requestJSON("/account/logout", {});
 }
