@@ -8,7 +8,7 @@ Plataforma de control de accesos para varios edificios, con un Worker de Cloudfl
 - Residentes: abrir accesos, crear/copiar/compartir/revocar códigos y consultar historial.
 - Administradores: residentes, permisos, códigos enmascarados ajenos, historial y contacto de ayuda.
 - Superadministración: edificios, portones, usuarios, revisiones, MQTT, inventario, reportes y auditoría, dentro del mismo panel.
-- Relés con protocolo 3, confirmación por comando y bloqueo de resultados inciertos.
+- Relés con protocolo 3, confirmación por comando y pausa temporal ante resultados inciertos, conservando la alerta de revisión.
 - Mi perfil: cambio de teléfono y contraseña; recuperación mediante enlace de un solo uso autorizado por superadministración.
 - Turnstile, límites de intentos, sesiones revocables y permisos verificados por el servidor.
 
@@ -22,6 +22,7 @@ Las pruebas usan datos y dispositivos simulados. Una confirmación del firmware 
 
 ## Operación
 
+- [Arquitectura de la API](docs/ARQUITECTURA-API.md)
 - [Instalación](INSTALACION.md)
 - [Acceso único y Demo](docs/ACCESO-UNICO.md)
 - [Interfaz](docs/INTERFAZ-PORTONSMART.md)

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { triggerGate } from "../src/index.js";
+import { triggerGate } from "../src/lib/gate-trigger.js";
 const gate = (method = "GET") => ({
   id: "g",
   status: "active",

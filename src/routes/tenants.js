@@ -1,0 +1,18 @@
+import { Hono } from "hono";
+import { loadTenant, buildingSession } from "../middleware/access.js";
+import { visitors } from "./visitors.js";
+import { panel } from "./panel.js";
+import { openings } from "./openings.js";
+import { codes } from "./codes.js";
+import { users } from "./users.js";
+export const tenants = new Hono();
+tenants.use("*", loadTenant);
+tenants.route("/", visitors);
+const authenticated = new Hono();
+authenticated.use("*", buildingSession);
+authenticated.route("/", panel);
+authenticated.route("/", openings);
+authenticated.route("/", codes);
+authenticated.route("/", users);
+tenants.route("/admin", authenticated);
+tenants.notFound((c) => c.json({ ok: false, error: "No encontrado" }, 404));

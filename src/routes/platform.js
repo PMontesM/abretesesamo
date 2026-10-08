@@ -1,0 +1,11 @@
+import { Hono } from "hono";
+import { platformSession } from "../middleware/access.js";
+import { router as configuration } from "./platform-configuration.js";
+import { router as buildings } from "./platform-buildings.js";
+import { router as management } from "./platform-management.js";
+export const platform = new Hono();
+platform.get("/", (c) => c.redirect(new URL("/login", c.req.url).href, 302));
+platform.use("*", platformSession);
+platform.route("/", configuration);
+platform.route("/", buildings);
+platform.route("/", management);

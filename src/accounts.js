@@ -1,3 +1,4 @@
+import { requireAccount } from "./middleware/access.js";
 import { redeemRecovery } from "./lib/account-recovery.js";
 import { normalizePhone } from "./lib/account-provision.js";
 import { Hono } from "hono";
@@ -12,7 +13,6 @@ import {
   verifySecret,
   InputError,
   jsonBody,
-  username,
 } from "./lib/security.js";
 import { takeAttempt } from "./lib/ratelimit.js";
 import { page } from "./html/shared.js";
@@ -116,9 +116,8 @@ accounts.post("/account/login", async (c) => {
     "Set-Cookie": await accountCookie(c.env, a),
   });
 });
-accounts.post("/account/renew", async (c) => {
-  const a = await accountSession(c.req.raw, c.env);
-  if (!a) return c.json({ ok: false, error: "Inicia sesión de nuevo." }, 401);
+accounts.post("/account/renew", requireAccount, async (c) => {
+  const a = c.get("account");
   const platform = await c.env.DB.prepare(
     "SELECT 1 FROM account_platform WHERE account_id=?",
   )
@@ -146,9 +145,8 @@ accounts.get("/account/buildings", async (c) => {
       })
     : c.json({ ok: true, linked: false, buildings: [] });
 });
-accounts.post("/account/password", async (c) => {
-  const a = await accountSession(c.req.raw, c.env);
-  if (!a) return c.json({ ok: false, error: "Inicia sesión de nuevo." }, 401);
+accounts.post("/account/password", requireAccount, async (c) => {
+  const a = c.get("account");
   if (!(await takeAttempt(c.env, "account-password:" + a.id, 6)))
     throw new InputError("Espera cinco minutos.");
   const b = await jsonBody(c.req.raw);
@@ -201,9 +199,8 @@ accounts.post("/account/recover", async (c) => {
   await redeemRecovery(c.env, await jsonBody(c.req.raw));
   return c.json({ ok: true }, 200, { "Set-Cookie": clearAccountCookie() });
 });
-accounts.post("/account/phone", async (c) => {
-  const a = await accountSession(c.req.raw, c.env);
-  if (!a) return c.json({ ok: false, error: "Inicia sesión de nuevo." }, 401);
+accounts.post("/account/phone", requireAccount, async (c) => {
+  const a = c.get("account");
   await limited(c, "phone-change:" + a.id, 6);
   const b = await jsonBody(c.req.raw);
   if (!(await verifySecret(b.currentSecret, a.secret)))
