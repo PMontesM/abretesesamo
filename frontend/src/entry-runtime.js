@@ -6,8 +6,8 @@ export function clientApp(config) {
     view = $("view"),
     nav = $("nav"),
     notice = $("notice");
-  const platform = config.mode === "platform",
-    base = platform ? "/platform" : "/t/" + (config.tenant?.slug || "");
+  const platform = config.mode === "platform";
+  let base = platform ? "/platform" : "/t/" + (config.tenant?.slug || "");
   let revision = 0;
   const codeFilters = new Map();
   const el = (tag, text, cls) => {
@@ -527,23 +527,22 @@ export function clientApp(config) {
       code.pattern = "[0-9]{6}";
       configureVisitorCode(code);
       code.autocomplete = "off";
-      const submit = el("button", "Continuar");
+      const submit = el("button", "Abrir portón");
       submit.type = "submit";
       formSubmit(form, submit, async () => {
         const value = code.value.trim(),
           d = await api("/api/visitor-entry", { code: value });
-        try {
-          sessionStorage.setItem("visitor-access:" + d.tenantId, value);
-          location.href = d.redirect;
-        } catch {
-          location.href = d.redirect + "?code=" + encodeURIComponent(value);
-        }
+        config.mode = "public";
+        config.tenant = { id: d.tenantId };
+        base = d.redirect;
+        view.replaceChildren();
+        await start(value, true);
       });
       form.className = "visitor-form";
       box.append(
         el(
           "p",
-          "Ingresa tu código para ver los accesos disponibles. No necesitas una cuenta.",
+          "Ingresa tu código para abrir. Si permite varios portones, podrás elegir uno.",
           "entry-subtitle",
         ),
         form,
@@ -676,7 +675,7 @@ export function clientApp(config) {
       );
     }
   }
-  async function start() {
+  async function start(enteredCode = "", openRequested = false) {
     if (config.mode.startsWith("account-")) {
       accountView();
       return;
@@ -702,7 +701,7 @@ export function clientApp(config) {
         f,
         "Código de seis dígitos",
         "text",
-        params.get("code") || saved,
+        enteredCode || params.get("code") || saved,
       );
       code.inputMode = "numeric";
       code.pattern = "[0-9]{6}";
@@ -913,7 +912,9 @@ export function clientApp(config) {
       resident.setAttribute("aria-pressed", "false");
       choices.append(visitor, resident);
       view.append(choices, s);
-      if (code.value) {
+      if (openRequested) {
+        f.requestSubmit();
+      } else if (code.value) {
         refresh.hidden = false;
         recover().catch((err) => feedback(result, err.message, true));
       }

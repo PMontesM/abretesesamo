@@ -102,16 +102,18 @@ try {
     singleUse: false,
   });
   await page.getByLabel("Código de seis dígitos").fill(pass.code);
-  await page.getByRole("button", { name: "Continuar", exact: true }).click();
-  await page.waitForURL("**/t/alpha");
+  await page.getByRole("button", { name: "Abrir portón", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Orden confirmada", exact: true })
+    .waitFor();
   assert.equal(
     await page.getByLabel("Código de seis dígitos").inputValue(),
     pass.code,
   );
   await page
-    .getByRole("button", { name: "Enviar orden de apertura", exact: true })
+    .getByRole("button", { name: "Orden confirmada", exact: true })
     .waitFor();
-  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM logs").get().n, 0);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM logs").get().n, 1);
   await page.goto("https://app.test/login");
   await page.getByLabel("Teléfono", { exact: true }).fill("+12025550107");
   await page.getByLabel("Contraseña", { exact: true }).fill("global-password");
