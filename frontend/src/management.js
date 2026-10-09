@@ -633,32 +633,34 @@ export function mountManagement(root, options = {}) {
     search.addEventListener("input", filterUsers);
     gateFilter.addEventListener("change", filterUsers);
     s.append(
-      button("Asignar administrador", () => assignAdmin()),
-      button("Agregar usuario", () =>
-        dialog(
-          "Nuevo usuario",
-          (f) => ({
-            name: input(f, "Nombre del usuario"),
-            phone: input(f, "Teléfono (con código de país)", "tel"),
-            secret: input(f, "Contraseña (mínimo 8 caracteres)", "password"),
-            permissions: gateChecks(f, gates),
-          }),
-          async (a) => {
-            await api("/platform/api/users", {
-              tenantId: tenant.id,
-              username: a.name.value,
-              phone: a.phone.value,
-              secret: a.secret.value,
-              gateIds: a.permissions(),
-            });
-            await refresh();
-            welcomeUser(
-              tenant,
-              a.phone.value,
-              a.secret.value,
-              gates.filter((g) => a.permissions().includes(g.id)),
-            );
-          },
+      actions(
+        button("Asignar administrador", () => assignAdmin()),
+        button("Agregar usuario", () =>
+          dialog(
+            "Nuevo usuario",
+            (f) => ({
+              name: input(f, "Nombre del usuario"),
+              phone: input(f, "Teléfono (con código de país)", "tel"),
+              secret: input(f, "Contraseña (mínimo 8 caracteres)", "password"),
+              permissions: gateChecks(f, gates),
+            }),
+            async (a) => {
+              await api("/platform/api/users", {
+                tenantId: tenant.id,
+                username: a.name.value,
+                phone: a.phone.value,
+                secret: a.secret.value,
+                gateIds: a.permissions(),
+              });
+              await refresh();
+              welcomeUser(
+                tenant,
+                a.phone.value,
+                a.secret.value,
+                gates.filter((g) => a.permissions().includes(g.id)),
+              );
+            },
+          ),
         ),
       ),
     );
