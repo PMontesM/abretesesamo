@@ -564,6 +564,56 @@ export function mountManagement(root, options = {}) {
       api("/platform/api/gates" + suffix),
     ]);
     const refresh = () => building(tenant);
+    const assignAdmin = (user = null) =>
+      dialog(
+        "Asignar administrador",
+        (f) => {
+          f.append(
+            el(
+              "p",
+              "Podrá gestionar usuarios, códigos y todos los portones de este edificio. Usa el mismo teléfono para administrar varios edificios. Las cuentas existentes conservan su contraseña y deberán iniciar sesión nuevamente.",
+            ),
+          );
+          return {
+            name: input(
+              f,
+              "Nombre del administrador",
+              "text",
+              user?.username || "",
+            ),
+            phone: input(
+              f,
+              "Teléfono del administrador",
+              "tel",
+              user?.phone || "",
+            ),
+            secret: input(
+              f,
+              "Contraseña inicial (solo para cuenta nueva)",
+              "password",
+              "",
+              false,
+            ),
+          };
+        },
+        async (a) => {
+          const d = await api("/platform/api/users/administrator", {
+            tenantId: tenant.id,
+            username: a.name.value,
+            phone: a.phone.value,
+            secret: a.secret.value,
+          });
+          await refresh();
+          welcomeUser(
+            tenant,
+            a.phone.value,
+            d.existingAccount ? "" : a.secret.value,
+            gates,
+          );
+        },
+        "Asignar administrador",
+      );
+
     const search = input(s, "Buscar usuario", "search", "", false);
     search.placeholder = "Nombre o teléfono";
     const gateFilter = select(
@@ -583,6 +633,7 @@ export function mountManagement(root, options = {}) {
     search.addEventListener("input", filterUsers);
     gateFilter.addEventListener("change", filterUsers);
     s.append(
+      button("Asignar administrador", () => assignAdmin()),
       button("Agregar usuario", () =>
         dialog(
           "Nuevo usuario",
@@ -673,6 +724,9 @@ export function mountManagement(root, options = {}) {
           ),
         );
         if (u.role !== "master") {
+          buttons.push(
+            button("Hacer administrador", () => assignAdmin(u), "secondary"),
+          );
           buttons.push(
             button(
               "Permisos",

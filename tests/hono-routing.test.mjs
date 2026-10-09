@@ -353,3 +353,108 @@ test("one logout endpoint revokes resident, administrator and platform sessions"
     f.sqlite.close();
   }
 });
+
+test("platform assigns administrators across buildings and promotes residents without changing passwords", async () => {
+  const f = await fixture();
+  try {
+    const phone = "+525510001234";
+    const path = "/platform/api/users/administrator";
+    for (const cookie of [f.cookies.master, f.cookies.resident, ""])
+      assert.equal(
+        (
+          await request(f.env, path, {
+            cookie,
+            body: {
+              tenantId: f.tenantId,
+              phone,
+              username: "Admin nuevo",
+              secret: "new-password",
+            },
+          })
+        ).status,
+        401,
+      );
+    let r = await request(f.env, path, {
+      cookie: f.cookies.platform,
+      body: {
+        tenantId: f.tenantId,
+        phone,
+        username: "Admin nuevo",
+        secret: "new-password",
+      },
+    });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).existingAccount, false);
+    const account = f.sqlite
+      .prepare("SELECT * FROM accounts WHERE phone=?")
+      .get(phone);
+    const second = await db.createTenant(f.env, {
+      slug: "second",
+      name: "Segundo",
+      gateName: "Demo",
+      triggerType: "demo",
+      masterUsername: "Otro",
+      masterSecret: "other-password",
+    });
+    await db.createUser(f.env, second, {
+      username: "Residente vinculado",
+      phone,
+      secret: "ignored-password",
+      gateIds: [],
+    });
+    const member = f.sqlite
+      .prepare(
+        "SELECT user_id FROM account_memberships WHERE account_id=? AND tenant_id=?",
+      )
+      .get(account.id, second);
+    const previous = await createSessionCookie(f.env, { id: member.user_id });
+    r = await request(f.env, path, {
+      cookie: f.cookies.platform,
+      body: { tenantId: second, phone },
+    });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).existingAccount, true);
+    assert.equal(
+      f.sqlite.prepare("SELECT secret FROM accounts WHERE id=?").get(account.id)
+        .secret,
+      account.secret,
+    );
+    assert.equal(
+      f.sqlite
+        .prepare(
+          "SELECT count(*) n FROM users u JOIN account_memberships m ON m.user_id=u.id WHERE m.account_id=? AND u.role='master'",
+        )
+        .get(account.id).n,
+      2,
+    );
+    assert.equal(
+      (await request(f.env, "/t/second/admin/panel", { cookie: previous }))
+        .status,
+      401,
+    );
+    const fresh = await createSessionCookie(f.env, { id: member.user_id });
+    assert.equal(
+      (await request(f.env, "/t/second/admin/users", { cookie: fresh })).status,
+      200,
+    );
+    r = await request(f.env, path, {
+      cookie: f.cookies.platform,
+      body: { tenantId: second, phone },
+    });
+    assert.equal((await r.json()).alreadyAdministrator, true);
+    assert.equal(
+      f.sqlite
+        .prepare(
+          "SELECT count(*) n FROM platform_audit_log WHERE action='assign_administrator'",
+        )
+        .get().n,
+      2,
+    );
+    assert.equal(
+      f.sqlite.prepare("SELECT count(*) n FROM account_platform").get().n,
+      1,
+    );
+  } finally {
+    f.sqlite.close();
+  }
+});

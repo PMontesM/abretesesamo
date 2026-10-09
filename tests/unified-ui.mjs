@@ -315,6 +315,34 @@ try {
   );
 
   await page
+    .getByRole("button", { name: "Asignar administrador", exact: true })
+    .click();
+  await page
+    .getByLabel("Nombre del administrador", { exact: true })
+    .fill("Administradora adicional");
+  await page
+    .getByLabel("Teléfono del administrador", { exact: true })
+    .fill("+12025550109");
+  await page
+    .getByLabel("Contraseña inicial (solo para cuenta nueva)", { exact: true })
+    .fill("admin-new-password");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Asignar administrador", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Compartir acceso", exact: true })
+    .getByRole("button", { name: "Cerrar", exact: true })
+    .click();
+  assert.equal(
+    sqlite
+      .prepare(
+        "SELECT role FROM users WHERE username='Administradora adicional'",
+      )
+      .get().role,
+    "master",
+  );
+  await page
     .getByRole("navigation", { name: "Secciones del edificio" })
     .getByRole("button", { name: "Revisiones", exact: true })
     .click();
@@ -439,23 +467,7 @@ try {
     await page.getByLabel("Código de seis dígitos").inputValue(),
     code,
   );
-  await page.getByRole("button", { name: "Continuar", exact: true }).click();
-  await page.waitForURL("**/t/edificio-nuevo");
-  await page.waitForTimeout(500);
-  assert.equal(
-    await page.getByRole("group", { name: "Elige el portón" }).count(),
-    0,
-  );
-  await page
-    .getByLabel("Código de seis dígitos")
-    .fill(code.slice(0, 3) + "\u00a0" + code.slice(3));
-  assert.equal(
-    await page.getByLabel("Código de seis dígitos").inputValue(),
-    code,
-  );
-  await page
-    .getByRole("button", { name: "Enviar orden de apertura", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Abrir portón", exact: true }).click();
   await page
     .getByRole("button", { name: "Estoy frente al portón, abrir", exact: true })
     .click();

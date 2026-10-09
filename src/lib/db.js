@@ -699,3 +699,65 @@ export async function visitorStatus(env, tenantId, code) {
     serverNow: Date.now(),
   };
 }
+
+export async function assignAdministrator(env, tenantId, body, actor) {
+  if (!(await tenantById(env, tenantId)))
+    throw new InputError("Edificio inexistente");
+  const phone = normalizePhone(body.phone);
+  const account = await env.DB.prepare("SELECT * FROM accounts WHERE phone=?")
+    .bind(phone)
+    .first();
+  const member =
+    account &&
+    (await env.DB.prepare(
+      "SELECT u.* FROM users u JOIN account_memberships m ON m.user_id=u.id WHERE m.account_id=? AND m.tenant_id=? AND u.tenant_id=?",
+    )
+      .bind(account.id, tenantId, tenantId)
+      .first());
+  if (member?.role === "master")
+    return {
+      userId: member.id,
+      existingAccount: true,
+      alreadyAdministrator: true,
+    };
+  const name = member?.username || displayName(body.username);
+  const secret = account?.secret || (await hashSecret(body.secret));
+  const id = member?.id || crypto.randomUUID();
+  if (
+    !member &&
+    (await env.DB.prepare(
+      "SELECT 1 FROM users WHERE tenant_id=? AND username=?",
+    )
+      .bind(tenantId, name)
+      .first())
+  )
+    throw new InputError(
+      "Ya existe una persona con este nombre. Añade una referencia para distinguirla.",
+    );
+  await env.DB.batch([
+    ...(member
+      ? [
+          env.DB.prepare(
+            "UPDATE users SET role='master',session_version=session_version+1 WHERE id=? AND tenant_id=?",
+          ).bind(id, tenantId),
+        ]
+      : [
+          env.DB.prepare(
+            "INSERT INTO users(id,tenant_id,username,secret,role,created_at) VALUES(?,?,?,?,'master',?)",
+          ).bind(id, tenantId, name, secret, Date.now()),
+          ...provisionPhoneStatements(env, phone, secret, id, tenantId),
+        ]),
+    env.DB.prepare(
+      "UPDATE accounts SET session_version=session_version+1 WHERE phone=?",
+    ).bind(phone),
+    ...auditStatements(env, actor, "assign_administrator", {
+      tenantId,
+      userId: id,
+    }),
+  ]);
+  return {
+    userId: id,
+    existingAccount: !!account,
+    alreadyAdministrator: false,
+  };
+}

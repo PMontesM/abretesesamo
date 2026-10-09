@@ -55,3 +55,9 @@ Se retiraron /passes, /passes/extend, /create-code, /revoke-code, /admin/dashboa
 No es necesaria una migración ni borrar registros. Los códigos ya guardados conservan sus restricciones; la lectura de órdenes pendientes del navegador evita reenvíos duplicados. Las pruebas de migración y datos persistidos se mantienen con ese propósito, sin ofrecer contratos anteriores en producción.
 
 Al publicar se deben desplegar frontend y Worker juntos y recargar las pestañas que sigan abiertas con el JavaScript anterior. La propuesta OpenAPI externa describe la revisión 9946f91; no forma parte del contrato versionado actual.
+
+## Administradores de edificios existentes
+
+En Superadministración → Edificios → Administrar edificio → Usuarios, «Asignar administrador» permite vincular un teléfono a ese edificio con rol de administrador. Una cuenta puede administrar varios edificios; cada asignación se realiza dentro del edificio seleccionado. La opción «Hacer administrador» usa el mismo formulario para residentes existentes.
+
+POST /platform/api/users/administrator recibe tenantId, phone y username para una membresía nueva; secret solo es necesario si el teléfono aún no tiene cuenta. La contraseña de cuentas existentes se conserva. La asignación y la auditoría se guardan juntas; se invalidan las sesiones de la cuenta al elevar permisos. No elimina otros administradores ni concede superadministración. Repetir una asignación existente no duplica usuarios.

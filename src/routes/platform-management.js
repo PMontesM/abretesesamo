@@ -95,6 +95,27 @@ router.post("/api/users", parseBody, platformTenant, async (c) => {
 
   return platformJSON(c, detail);
 });
+router.post(
+  "/api/users/administrator",
+  parseBody,
+  platformTenant,
+  async (c) => {
+    const admin = c.get("admin");
+    if (!(await takeAttempt(c.env, "assign-administrator:" + admin.id, 10)))
+      throw new InputError(
+        "Espera cinco minutos antes de asignar otro administrador.",
+      );
+    return platformJSON(
+      c,
+      await db.assignAdministrator(
+        c.env,
+        c.get("tenantId"),
+        c.get("body"),
+        admin,
+      ),
+    );
+  },
+);
 router.post("/api/users/delete", parseBody, platformTenant, async (c) => {
   const env = c.env;
   const admin = c.get("admin");
